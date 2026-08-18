@@ -202,6 +202,7 @@ url = "https://example.com"
 # 画师关注 / 标签订阅 检查间隔 (秒), 0=不启用
 [scheduler]
 watch_interval = 600
+# alert_threshold = 3  # 单源连续抓取失败 3 次后向管理员发送告警 (0=不启用)
 
 # ────────────────────────── XP-Pusher (内嵌 Python) ──────────────────────────
 # 管理命令: /xppusher start|stop|restart|log|key

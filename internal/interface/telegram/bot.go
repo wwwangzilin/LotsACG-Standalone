@@ -40,6 +40,30 @@ func (app *BotApp) Bot() *telego.Bot {
 	return app.bot
 }
 
+// QueueDepth 返回当前发布队列深度（用于可观测性指标）。
+func (app *BotApp) QueueDepth() float64 {
+	if app.artworkInfoQueue == nil {
+		return 0
+	}
+	return float64(len(app.artworkInfoQueue))
+}
+
+// NotifyAdmins 向所有配置的管理员发送文本告警（用于抓取失败等异常通知）。
+func (app *BotApp) NotifyAdmins(message string) {
+	if app.bot == nil {
+		return
+	}
+	for _, adminID := range app.cfg.Admins {
+		msg := telegoutil.Message(
+			telegoutil.ID(adminID),
+			"⚠️ "+message,
+		)
+		if _, err := app.bot.SendMessage(context.Background(), msg); err != nil {
+			log.Warnf("failed to send admin alert: %v", err)
+		}
+	}
+}
+
 func Init(ctx context.Context, serv *service.Service, cfg runtimecfg.TelegramConfig, debug bool) (*BotApp, error) {
 	log.Info("Initing telegram client")
 	var err error

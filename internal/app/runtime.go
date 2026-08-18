@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -129,7 +130,16 @@ func (r *Runtime) Start(ctx context.Context, stop func()) error {
 	}
 
 	if r.cfg.Scheduler.Enable && r.poster != nil {
-		go scheduler.StartPosterWithConfig(ctx, r.cfg.Scheduler, r.poster, r.service)
+		// 错误告警回调：连续失败时通知管理员（若配置了告警阈值且 bot 可用）
+		var alerterNotify func(string, int)
+		if r.tgbot != nil {
+			if b, ok := r.tgbot.(interface{ NotifyAdmins(string) }); ok {
+				alerterNotify = func(source string, failures int) {
+					b.NotifyAdmins(fmt.Sprintf("数据源 %s 连续 %d 次抓取失败，请检查！", source, failures))
+				}
+			}
+		}
+		go scheduler.StartPosterWithConfig(ctx, r.cfg.Scheduler, r.poster, r.service, alerterNotify)
 	}
 
 	if r.cfg.Rest.Enable {

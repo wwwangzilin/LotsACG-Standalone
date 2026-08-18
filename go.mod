@@ -5,6 +5,7 @@ go 1.25.7
 require (
 	github.com/HugoSmits86/nativewebp v1.2.1
 	github.com/PuerkitoBio/goquery v1.11.0
+	github.com/andybalholm/brotli v1.2.1
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/charmbracelet/log v0.4.2
@@ -19,6 +20,7 @@ require (
 	github.com/gofiber/fiber/v3 v3.1.0
 	github.com/gorilla/feeds v1.2.0
 	github.com/imroc/req/v3 v3.57.0
+	github.com/klauspost/compress v1.18.5
 	github.com/krau/ffmpeg-go v0.6.0
 	github.com/krau/go-thumbhash v0.0.0-20250822034729-2df7c655859d
 	github.com/meilisearch/meilisearch-go v0.36.1
@@ -26,6 +28,8 @@ require (
 	github.com/ncruces/go-sqlite3 v0.30.5
 	github.com/ncruces/go-sqlite3/gormlite v0.30.2
 	github.com/oschwald/geoip2-golang v1.13.0
+	github.com/pelletier/go-toml/v2 v2.2.4
+	github.com/prometheus/client_golang v1.20.5
 	github.com/redis/rueidis v1.0.71
 	github.com/rhysd/go-github-selfupdate v1.2.3
 	github.com/samber/oops v1.21.0
@@ -40,6 +44,7 @@ require (
 	go.uber.org/zap v1.27.1
 	golang.org/x/image v0.39.0
 	golang.org/x/sync v0.20.0
+	golang.org/x/text v0.36.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/datatypes v1.2.7
 	gorm.io/driver/mysql v1.6.0
@@ -49,9 +54,9 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
-	github.com/andybalholm/brotli v1.2.1 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.1 // indirect
@@ -87,7 +92,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
@@ -95,13 +99,16 @@ require (
 	github.com/mattn/go-isatty v0.0.21 // indirect
 	github.com/mattn/go-runewidth v0.0.19 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
+	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/onsi/gomega v1.39.1 // indirect
 	github.com/oschwald/maxminddb-golang v1.13.1 // indirect
-	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
+	github.com/prometheus/client_model v0.6.1 // indirect
+	github.com/prometheus/common v0.55.0 // indirect
+	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.57.1 // indirect
 	github.com/refraction-networking/utls v1.8.2 // indirect
@@ -133,5 +140,5 @@ require (
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	google.golang.org/protobuf v1.36.7 // indirect
 )

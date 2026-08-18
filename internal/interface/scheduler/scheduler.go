@@ -22,10 +22,10 @@ type ArtworkPoster interface {
 }
 
 func StartPoster(ctx context.Context, poster ArtworkPoster, serv *service.Service) {
-	StartPosterWithConfig(ctx, runtimecfg.Get().Scheduler, poster, serv)
+	StartPosterWithConfig(ctx, runtimecfg.Get().Scheduler, poster, serv, nil)
 }
 
-func StartPosterWithConfig(ctx context.Context, cfg runtimecfg.SchedulerConfig, poster ArtworkPoster, serv *service.Service) {
+func StartPosterWithConfig(ctx context.Context, cfg runtimecfg.SchedulerConfig, poster ArtworkPoster, serv *service.Service, alertNotify func(source string, failures int)) {
 	if !cfg.Enable || poster == nil {
 		return
 	}
@@ -37,6 +37,7 @@ func StartPosterWithConfig(ctx context.Context, cfg runtimecfg.SchedulerConfig, 
 		limit = math.MaxInt
 	}
 	timeout := time.Duration(cfg.Interval-10) * time.Second
+	alerter := NewAlerter(cfg.AlertThreshold, 0, alertNotify)
 	doTask := func() {
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
@@ -46,13 +47,17 @@ func StartPosterWithConfig(ctx context.Context, cfg runtimecfg.SchedulerConfig, 
 		fetcheds := make([]*dto.FetchedArtwork, 0)
 		for _, sou := range sources {
 			artworks, err := sou.FetchNewArtworks(ctx, limit)
+			sourceName := fmt.Sprintf("%T", sou)
 			if err != nil {
-				log.Error("fetching new artworks from source", "source", fmt.Sprintf("%T", sou), "err", err)
+				log.Error("fetching new artworks from source", "source", sourceName, "err", err)
+				alerter.RecordFailure(sourceName)
+				continue
 			}
+			alerter.RecordSuccess(sourceName)
 			if len(artworks) == 0 {
 				continue
 			}
-			log.Info("fetched artworks", "count", len(artworks), "source", fmt.Sprintf("%T", sou))
+			log.Info("fetched artworks", "count", len(artworks), "source", sourceName)
 			for _, artwork := range artworks {
 				if artwork == nil || artwork.SourceURL == "" {
 					continue

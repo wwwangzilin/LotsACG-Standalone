@@ -72,6 +72,9 @@ type SchedulerConfig struct {
 
 	// WatchInterval 画师关注/标签订阅的监控检查间隔 (秒), 0 表示不启用监控
 	WatchInterval uint `toml:"watch_interval" mapstructure:"watch_interval" json:"watch_interval" yaml:"watch_interval"`
+
+	// AlertThreshold 单源连续抓取失败多少次后触发告警, 0 表示不启用告警
+	AlertThreshold int `toml:"alert_threshold" mapstructure:"alert_threshold" json:"alert_threshold" yaml:"alert_threshold"`
 }
 
 type AppConfig struct {
@@ -144,7 +147,8 @@ func loadConfig() Config {
 		"aiapi.recommend_tags": 12,
 		"aiapi.auto_tag":       false,
 
-		"scheduler.watch_interval": 600,
+		"scheduler.watch_interval":  600,
+		"scheduler.alert_threshold": 0,
 
 		"xppusher.command":    "main.py",
 		"xppusher.args":       "--now",
