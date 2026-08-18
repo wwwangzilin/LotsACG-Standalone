@@ -1,0 +1,50 @@
+package storage
+
+import (
+	"context"
+	"fmt"
+	"maps"
+	"sync"
+
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/shared"
+	"github.com/wwwangzilin/LotsACG-Standalone/pkg/log"
+)
+
+type Factory func() Storage
+
+var (
+	storages  = make(map[shared.StorageType]Storage)
+	factories = make(map[shared.StorageType]Factory)
+	factoryMu sync.RWMutex
+)
+
+func Register(storageType shared.StorageType, f Factory) {
+	factoryMu.Lock()
+	defer factoryMu.Unlock()
+	if _, exists := factories[storageType]; exists {
+		panic("storage: Register called twice for storage type " + string(storageType))
+	}
+	factories[storageType] = f
+}
+
+func InitAll(ctx context.Context) error {
+	factoryMu.Lock()
+	defer factoryMu.Unlock()
+	for storageType, factory := range factories {
+		storage := factory()
+		if err := storage.Init(ctx); err != nil {
+			return fmt.Errorf("failed to init storage %s: %w", storageType, err)
+		}
+		storages[storageType] = storage
+		log.Debug("Initialized storage", "type", storageType)
+	}
+	return nil
+}
+
+func Storages() map[shared.StorageType]Storage {
+	factoryMu.RLock()
+	defer factoryMu.RUnlock()
+	stors := make(map[shared.StorageType]Storage)
+	maps.Copy(stors, storages)
+	return stors
+}

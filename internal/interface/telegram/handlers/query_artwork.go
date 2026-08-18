@@ -1,0 +1,304 @@
+package handlers
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"math/rand"
+	"strconv"
+	"strings"
+
+	"github.com/duke-git/lancet/v2/slice"
+	"github.com/mymmrac/telego"
+	"github.com/mymmrac/telego/telegohandler"
+	"github.com/mymmrac/telego/telegoutil"
+	"github.com/samber/oops"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/config/runtimecfg"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/interface/telegram/handlers/utils"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/interface/telegram/metautil"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/model/entity"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/model/query"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/service"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/shared"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/shared/errs"
+	"github.com/wwwangzilin/LotsACG-Standalone/pkg/ioutil"
+	"github.com/wwwangzilin/LotsACG-Standalone/pkg/strutil"
+)
+
+func RandomPicture(ctx *telegohandler.Context, message telego.Message) error {
+	cmd, _, args := telegoutil.ParseCommand(message.Text)
+	argText := strings.ReplaceAll(strings.Join(args, " "), "\\", "")
+	textArray := strutil.ParseTo2DArray(argText, "|", " ")
+	r18Type := shared.R18TypeNone
+	if cmd == "setu" {
+		// /setu 始终输出 R18 (不推荐模式设置影响)
+		r18Type = shared.R18TypeR18
+	} else if mode, ok := service.GetUserR18Mode(ctx, message.From.ID); ok {
+		// /random 受用户 R18 模式影响: on=仅R18, off=仅全年龄, mixed=全部
+		switch mode {
+		case service.R18ModeOn:
+			r18Type = shared.R18TypeR18
+		case service.R18ModeOff:
+			r18Type = shared.R18TypeNone
+		default: // mixed
+			r18Type = shared.R18TypeAll
+		}
+	}
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	artwork, err := serv.QueryArtworks(ctx, query.ArtworksDB{
+		ArtworksFilter: query.ArtworksFilter{
+			R18:        r18Type,
+			Keywords:   textArray,
+			HasPicture: true,
+		},
+		Paginate: query.Paginate{
+			Offset: 0,
+			Limit:  1,
+		},
+		Random: true,
+	})
+	if err != nil {
+		if errors.Is(err, errs.ErrRecordNotFound) {
+			utils.ReplyMessage(ctx, message, "未找到相关图片")
+			return nil
+		}
+		utils.ReplyMessage(ctx, message, "查询图片失败")
+		return oops.Wrapf(err, "failed to query artworks for random picture")
+	}
+	if len(artwork) == 0 {
+		utils.ReplyMessage(ctx, message, "未找到相关图片")
+		return nil
+	}
+	pictures := artwork[0].Pictures
+	picIndex := rand.Intn(len(pictures))
+	picture := pictures[picIndex]
+	meta, err := requireMeta(ctx)
+	if err != nil {
+		return err
+	}
+	aw := artwork[0]
+	photoMessage, err := utils.SendPhotoWithCompressRetry(ctx, ctx.Bot(), func(level int) (*ioutil.Closer[telego.InputFile], *telego.SendPhotoParams, error) {
+		file, err := utils.GetPicturePhotoInputFileWithLevel(ctx, serv, meta, picture, level)
+		if err != nil {
+			return nil, nil, oops.Wrapf(err, "failed to get picture input file")
+		}
+		photo := telegoutil.
+			Photo(message.Chat.ChatID(), file.Value).
+			WithCaption(fmt.Sprintf("<a href=\"%s\">%s</a>", aw.SourceURL, utils.EscapeHTML(aw.Title))).
+			WithParseMode(telego.ModeHTML).
+			WithReplyParameters(&telego.ReplyParameters{
+				MessageID: message.MessageID,
+			}).
+			WithReplyMarkup(telegoutil.InlineKeyboard(utils.GetPostedArtworkInlineKeyboardButton(aw, meta)))
+		if aw.R18 {
+			photo = photo.WithHasSpoiler()
+		}
+		return file, photo, nil
+	})
+	if err != nil {
+		utils.ReplyMessage(ctx, message, "发送图片失败")
+		return oops.Wrapf(err, "failed to send photo message")
+	}
+	if photoMessage != nil {
+		fileId := photoMessage.Photo[len(photoMessage.Photo)-1].FileID
+		tginfo := picture.TelegramInfo.Data()
+		tginfo.SetFileID(meta.BotID(), shared.TelegramMediaTypePhoto, fileId)
+		if err := serv.UpdatePictureTelegramInfo(ctx, picture.ID, &tginfo); err != nil {
+			return oops.Wrapf(err, "failed to update picture telegram info")
+		}
+	}
+	return nil
+}
+
+func HybridSearchArtworks(ctx *telegohandler.Context, message telego.Message) error {
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	_, _, args := telegoutil.ParseCommand(message.Text)
+	if len(args) == 0 {
+		helpText := `
+<b>使用 /hybrid 命令并提供查询参数, 将使用混合搜索引擎搜索相关图片</b>
+
+命令语法: /hybrid 搜索内容 [语义比例]
+
+语义比例为0-1的浮点数, 应位于参数列表最后, 越大越趋向于基于语义搜索, 若不提供, 使用默认值0.8
+
+<i>Tips: 该命令将基于文本语义进行搜索, 而非关键词匹配</i>
+`
+		utils.ReplyMessageWithHTML(ctx, message, helpText)
+		return nil
+	}
+	var hybridSemanticRatio float64
+	var queryText string
+	hybridSemanticRatio, err = strconv.ParseFloat(args[len(args)-1], 64)
+	if err != nil {
+		hybridSemanticRatio = 0.8
+		queryText = strings.Join(args, " ")
+	} else {
+		if hybridSemanticRatio < 0 || hybridSemanticRatio > 1 {
+			utils.ReplyMessage(ctx, message, "参数错误: 语义比例应为0-1的小数")
+			return nil
+		}
+		queryText = strings.Join(args[:len(args)-1], " ")
+	}
+	artworks, err := serv.SearchArtworks(ctx, &query.ArtworkSearch{
+		//  queryText, hybridSemanticRatio, 0, 50, types.R18TypeAll
+		Query:               queryText,
+		Hybrid:              true,
+		HybridSemanticRatio: hybridSemanticRatio,
+		Paginate: query.Paginate{
+			Offset: 0,
+			Limit:  50,
+		},
+		R18: shared.R18TypeAll,
+	})
+	if err != nil {
+		if errors.Is(err, errs.ErrSearchEngineNotEnabled) {
+			utils.ReplyMessage(ctx, message, "搜索引擎未启用")
+			return nil
+		}
+		utils.ReplyMessage(ctx, message, "搜索失败")
+		return oops.Wrapf(err, "failed to search artworks")
+	}
+	if len(artworks) == 0 {
+		utils.ReplyMessage(ctx, message, "未找到相关图片")
+		return nil
+	}
+	// [TODO] 处理无图作品
+	artworks = slice.Filter(artworks, func(i int, item *entity.Artwork) bool {
+		return len(item.Pictures) > 0
+	})
+
+	if len(artworks) > 10 {
+		artworks = slice.Shuffle(artworks)[:10]
+	}
+	return handleSendResultArtworks(ctx, artworks, message, ctx.Bot())
+}
+
+func SearchSimilarArtworks(ctx *telegohandler.Context, message telego.Message) error {
+	if message.ReplyToMessage == nil {
+		helpText := `
+<b>使用 /similar 命令回复一条包含图片或作品链接的消息, 将搜索与该图片相关的作品</b>
+
+命令语法: /similar [偏移量] [限制数量]
+
+若回复的消息中未找到支持的链接, 将尝试识别图片内容并搜索相关作品
+`
+		utils.ReplyMessageWithHTML(ctx, message, helpText)
+		return nil
+	}
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	// var sourceURL string
+	sourceURL := utils.FindSourceURLInMessage(serv, message.ReplyToMessage)
+	if sourceURL == "" {
+		utils.ReplyMessage(ctx, message, "回复的消息中未找到支持的链接")
+	}
+	artwork, err := serv.GetArtworkByURL(ctx, sourceURL)
+	if err != nil {
+		utils.ReplyMessage(ctx, message, "获取作品信息失败")
+		return oops.Wrapf(err, "failed to get artwork by url")
+	}
+	_, _, args := telegoutil.ParseCommand(message.Text)
+	offset := 0
+	limit := 50
+	if len(args) > 0 {
+		offset, err = strconv.Atoi(args[0])
+		if err != nil || offset < 0 {
+			utils.ReplyMessage(ctx, message, "参数错误: 偏移量应为非负整数")
+			return nil
+		}
+	}
+	if len(args) > 1 {
+		limit, err = strconv.Atoi(args[1])
+		if err != nil || limit < 1 || limit > 100 {
+			utils.ReplyMessage(ctx, message, "参数错误: 限制数量应为1-10的整数")
+			return nil
+		}
+	}
+	artworks, err := serv.FindSimilarArtworks(ctx, &query.ArtworkSimilar{
+		ArtworkID: artwork.ID,
+		R18:       shared.R18TypeAll,
+		Paginate: query.Paginate{
+			Offset: offset,
+			Limit:  limit,
+		},
+	})
+	if err != nil {
+		if errors.Is(err, errs.ErrSearchEngineNotEnabled) {
+			utils.ReplyMessage(ctx, message, "搜索引擎未启用")
+			return nil
+		}
+		utils.ReplyMessage(ctx, message, "搜索失败")
+		return oops.Wrapf(err, "failed to find similar artworks")
+	}
+	if len(artworks) == 0 {
+		utils.ReplyMessage(ctx, message, "未找到相似的作品")
+		return nil
+	}
+	if len(artworks) > 10 {
+		artworks = slice.Shuffle(artworks)[:10]
+	}
+	return handleSendResultArtworks(ctx, artworks, message, ctx.Bot())
+}
+
+// func handleGetSourceURLFromPicture(ctx *telegohandler.Context, serv *service.Service, message telego.Message) (string, []byte, error) {
+// 	file, err := utils.GetMessagePhotoFile(ctx, message.ReplyToMessage)
+// 	if err != nil {
+// 		return "", nil, err
+// 	}
+// 	hash, err := mediatool.GetImagePhashFromReader(bytes.NewReader(file))
+// 	if err != nil {
+// 		return "", file, err
+// 	}
+// 	pictures, err := serv.QueryPicturesByPhash(ctx, query.PicturesPhash{Input: hash, Distance: 10, Limit: 1})
+// 	if err != nil {
+// 		return "", file, err
+// 	}
+// 	if len(pictures) == 0 {
+// 		return "", file, errors.New("not found similar pictures by hash")
+// 	}
+// 	return pictures[0].Artwork.SourceURL, file, nil
+// }
+
+func handleSendResultArtworks(ctx context.Context, artworks []*entity.Artwork, message telego.Message, bot *telego.Bot) error {
+	inputMedias := make([]telego.InputMedia, 0, len(artworks))
+	meta := metautil.FromContext(ctx)
+	if meta == nil {
+		return oops.New("telegram handler missing metadata in context")
+	}
+	for _, artwork := range artworks {
+		if len(artwork.Pictures) == 0 {
+			continue
+		}
+		picture := artwork.Pictures[0]
+		var file telego.InputFile
+		if fileId := picture.TelegramInfo.Data().FileID(meta.BotID(), shared.TelegramMediaTypePhoto); fileId != "" {
+			file = telegoutil.FileFromID(fileId)
+		} else {
+			photoURL := fmt.Sprintf("%s/?url=%s&w=2560&h=2560&we&output=jpg", runtimecfg.Get().Wsrv.URL, picture.Original)
+			file = telegoutil.FileFromURL(photoURL)
+		}
+		caption := fmt.Sprintf("<a href=\"%s\">%s</a>", artwork.SourceURL, utils.EscapeHTML(artwork.Title))
+		inputMedias = append(inputMedias, telegoutil.MediaPhoto(file).WithCaption(caption).WithParseMode(telego.ModeHTML))
+	}
+	if len(inputMedias) == 0 {
+		bot.SendMessage(ctx, telegoutil.Message(message.Chat.ChatID(), "未找到相关图片").WithReplyParameters(&telego.ReplyParameters{
+			MessageID: message.MessageID,
+			ChatID:    message.Chat.ChatID(),
+		}))
+		return nil
+	}
+	mediaGroup := telegoutil.MediaGroup(message.Chat.ChatID(), inputMedias...).WithReplyParameters(&telego.ReplyParameters{
+		MessageID: message.MessageID,
+		ChatID:    message.Chat.ChatID(),
+	})
+	_, err := bot.SendMediaGroup(ctx, mediaGroup)
+	return err
+}

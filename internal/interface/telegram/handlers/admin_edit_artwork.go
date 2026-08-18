@@ -1,0 +1,496 @@
+package handlers
+
+import (
+	"errors"
+	"strconv"
+	"strings"
+
+	"github.com/duke-git/lancet/v2/slice"
+	"github.com/mymmrac/telego"
+	"github.com/mymmrac/telego/telegohandler"
+	"github.com/mymmrac/telego/telegoutil"
+	"github.com/samber/oops"
+	"github.com/unvgo/ouid"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/interface/telegram/handlers/utils"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/shared"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/shared/errs"
+	"github.com/wwwangzilin/LotsACG-Standalone/pkg/log"
+)
+
+func ToggleArtworkR18(ctx *telegohandler.Context, message telego.Message) error {
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	if !utils.CheckPermissionInGroup(ctx, serv, message, shared.PermissionEditArtwork) {
+		utils.ReplyMessage(ctx, message, "你没有编辑作品的权限")
+		return nil
+	}
+	var sourceURL string
+	if message.ReplyToMessage != nil {
+		sourceURL = utils.FindSourceURLInMessage(serv, message.ReplyToMessage)
+	} else {
+		sourceURL = serv.FindSourceURL(message.Text)
+	}
+	if sourceURL == "" {
+		helpText := `
+[管理员] <b>使用 /r18 命令回复一条包含作品链接的消息, 或在参数中提供作品链接, 将切换该作品的 R18 值</b>
+
+命令语法: /r18 [作品链接]
+`
+		utils.ReplyMessageWithHTML(ctx, message, helpText)
+		return nil
+	}
+
+	artwork, err := serv.GetArtworkByURL(ctx, sourceURL)
+	if err != nil {
+		utils.ReplyMessage(ctx, message, "获取作品信息失败: "+err.Error())
+		return nil
+	}
+	if err := serv.UpdateArtworkR18ByURL(ctx, sourceURL, !artwork.R18); err != nil {
+		utils.ReplyMessage(ctx, message, "更新作品信息失败: "+err.Error())
+		return nil
+	}
+	// 标记为 R18 后, 若 R18 频道已配置且作品已发布, 自动在 R18 频道发布同样的内容
+	if !artwork.R18 {
+		if err := autoPublishToR18Channel(ctx, serv, artwork); err != nil {
+			log.Debug("auto publish to r18 channel skipped", "err", err)
+		} else {
+			utils.ReplyMessage(ctx, message, "该作品 R18 已标记为 true, 并已自动发布到 R18 频道")
+			return nil
+		}
+	}
+	utils.ReplyMessage(ctx, message, "该作品 R18 已标记为 "+strconv.FormatBool(!artwork.R18))
+	return nil
+}
+
+func SetArtworkTags(ctx *telegohandler.Context, message telego.Message) error {
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	if !utils.CheckPermissionInGroup(ctx, serv, message, shared.PermissionEditArtwork) {
+		utils.ReplyMessage(ctx, message, "你没有编辑作品的权限")
+		return nil
+	}
+
+	var sourceURL string
+	if message.ReplyToMessage != nil {
+		sourceURL = utils.FindSourceURLInMessage(serv, message.ReplyToMessage)
+	} else {
+		sourceURL = serv.FindSourceURL(message.Text)
+	}
+	if sourceURL == "" {
+		utils.ReplyMessage(ctx, message, "请回复一条消息, 或者指定作品链接")
+		return nil
+	}
+
+	artwork, err := serv.GetArtworkByURL(ctx, sourceURL)
+	if err != nil {
+		utils.ReplyMessage(ctx, message, "获取作品信息失败: "+err.Error())
+		return nil
+	}
+
+	cmd, _, args := telegoutil.ParseCommand(message.Text)
+	var argTags []string
+	if message.ReplyToMessage != nil {
+		if len(args) == 0 {
+			utils.ReplyMessage(ctx, message, "请提供标签, 用空格分隔")
+			return nil
+		}
+		argTags = args
+	} else {
+		if len(args) <= 1 {
+			utils.ReplyMessage(ctx, message, "请在链接后提供标签, 用空格分隔")
+			return nil
+		}
+		argTags = args[1:]
+	}
+
+	newTags := make([]string, 0)
+	origTags := make([]string, len(artwork.Tags))
+	for i, tag := range artwork.Tags {
+		origTags[i] = tag.Name
+	}
+	switch cmd {
+	case "tags":
+		newTags = argTags
+	case "addtags":
+		newTags = append(origTags, argTags...)
+	case "deltags":
+		newTags = origTags[:]
+		for _, arg := range argTags {
+			for i, tag := range newTags {
+				if tag == arg {
+					newTags = append(newTags[:i], newTags[i+1:]...)
+					break
+				}
+			}
+		}
+	}
+	for i, tag := range newTags {
+		newTags[i] = strings.TrimPrefix(tag, "#")
+	}
+	newTags = slice.Unique(newTags)
+
+	if err := serv.UpdateArtworkTagsByURL(ctx, artwork.SourceURL, newTags); err != nil {
+		utils.ReplyMessage(ctx, message, "更新作品标签失败: "+err.Error())
+		return nil
+	}
+	artwork, err = serv.GetArtworkByURL(ctx, artwork.SourceURL)
+	if err != nil {
+		utils.ReplyMessage(ctx, message, "获取更新后的作品信息失败: "+err.Error())
+		return nil
+	}
+	meta, err := requireMeta(ctx)
+	if err != nil {
+		return err
+	}
+	if msgId := artwork.FirstMedia().GetTelegramInfo().MessageID(meta.ChannelChatID().ID); msgId != 0 {
+		ctx.Bot().EditMessageCaption(ctx, &telego.EditMessageCaptionParams{
+			ChatID:    meta.ChannelChatID(),
+			MessageID: msgId,
+			Caption:   utils.ArtworkHTMLCaption(artwork),
+			ParseMode: telego.ModeHTML,
+		})
+	}
+	utils.ReplyMessage(ctx, message, "更新作品标签成功")
+	return nil
+}
+
+func EditArtworkR18(ctx *telegohandler.Context, query telego.CallbackQuery) error {
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	if !utils.CheckPermissionForQuery(ctx, serv, query, shared.PermissionEditArtwork) {
+		ctx.Bot().AnswerCallbackQuery(ctx,
+			&telego.AnswerCallbackQueryParams{
+				CallbackQueryID: query.ID,
+				Text:            "你没有编辑作品的权限",
+				ShowAlert:       true,
+				CacheTime:       60,
+			},
+		)
+		return nil
+	}
+	args := strings.Split(query.Data, " ")
+	// edit_artwork r18 id 1
+	if len(args) != 4 {
+		ctx.Bot().AnswerCallbackQuery(ctx,
+			&telego.AnswerCallbackQueryParams{
+				CallbackQueryID: query.ID,
+				Text:            "参数错误",
+				ShowAlert:       true,
+				CacheTime:       60,
+			},
+		)
+		return nil
+	}
+	artworkID, err := ouid.FromObjectIDHex(args[2])
+	if err != nil {
+		ctx.Bot().AnswerCallbackQuery(ctx,
+			&telego.AnswerCallbackQueryParams{
+				CallbackQueryID: query.ID,
+				Text:            "无效的ID",
+				ShowAlert:       true,
+				CacheTime:       60,
+			},
+		)
+		return nil
+	}
+	r18 := args[3] == "1"
+	if err := serv.UpdateArtworkR18ByID(ctx, artworkID, r18); err != nil {
+		ctx.Bot().AnswerCallbackQuery(ctx,
+			&telego.AnswerCallbackQueryParams{
+				CallbackQueryID: query.ID,
+				Text:            "更新作品信息失败: " + err.Error(),
+				ShowAlert:       true,
+				CacheTime:       60,
+			},
+		)
+		return nil
+	}
+	ctx.Bot().AnswerCallbackQuery(ctx,
+		&telego.AnswerCallbackQueryParams{
+			CallbackQueryID: query.ID,
+			Text:            "该作品 R18 已标记为 " + strconv.FormatBool(r18),
+			CacheTime:       2,
+		},
+	)
+	return nil
+}
+
+func EditArtworkTitle(ctx *telegohandler.Context, message telego.Message) error {
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	if !utils.CheckPermissionInGroup(ctx, serv, message, shared.PermissionEditArtwork) {
+		utils.ReplyMessage(ctx, message, "你没有编辑作品的权限")
+		return nil
+	}
+
+	var sourceURL string
+	if message.ReplyToMessage != nil {
+		sourceURL = utils.FindSourceURLInMessage(serv, message.ReplyToMessage)
+	} else {
+		sourceURL = serv.FindSourceURL(message.Text)
+	}
+	if sourceURL == "" {
+		utils.ReplyMessage(ctx, message, "请回复一条消息, 或者指定作品链接")
+		return nil
+	}
+
+	artwork, err := serv.GetArtworkByURL(ctx, sourceURL)
+	if err != nil {
+		utils.ReplyMessage(ctx, message, "获取作品信息失败: "+err.Error())
+		return nil
+	}
+
+	_, _, args := telegoutil.ParseCommand(message.Text)
+	var titleSlice []string
+	if message.ReplyToMessage != nil {
+		if len(args) == 0 {
+			utils.ReplyMessage(ctx, message, "请提供标题")
+			return nil
+		}
+		titleSlice = args
+	} else {
+		if len(args) <= 1 {
+			utils.ReplyMessage(ctx, message, "请在链接后提供标题")
+			return nil
+		}
+		titleSlice = args[1:]
+	}
+	title := strings.Join(titleSlice, " ")
+	if err := serv.UpdateArtworkTitleByURL(ctx, artwork.SourceURL, title); err != nil {
+		utils.ReplyMessage(ctx, message, "更新作品标题失败: "+err.Error())
+		return nil
+	}
+	artwork, err = serv.GetArtworkByURL(ctx, artwork.SourceURL)
+	if err != nil {
+		utils.ReplyMessage(ctx, message, "获取更新后的作品信息失败: "+err.Error())
+		return nil
+	}
+	meta, err := requireMeta(ctx)
+	if err != nil {
+		return err
+	}
+	if msgId := artwork.FirstMedia().GetTelegramInfo().MessageID(meta.ChannelChatID().ID); msgId != 0 {
+		ctx.Bot().EditMessageCaption(ctx, &telego.EditMessageCaptionParams{
+			ChatID:    meta.ChannelChatID(),
+			MessageID: msgId,
+			Caption:   utils.ArtworkHTMLCaption(artwork),
+			ParseMode: telego.ModeHTML,
+		})
+	}
+	utils.ReplyMessage(ctx, message, "更新作品标题成功")
+	return nil
+}
+
+// 删除 CachedArtwork, 刷新 telegram info
+func RefreshArtwork(ctx *telegohandler.Context, message telego.Message) error {
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	if !utils.CheckPermissionInGroup(ctx, serv, message, shared.PermissionEditArtwork) {
+		utils.ReplyMessage(ctx, message, "你没有编辑作品的权限")
+		return nil
+	}
+
+	var sourceURL string
+	if message.ReplyToMessage != nil {
+		sourceURL = utils.FindSourceURLInMessage(serv, message.ReplyToMessage)
+	} else {
+		sourceURL = serv.FindSourceURL(message.Text)
+	}
+	if sourceURL == "" {
+		utils.ReplyMessage(ctx, message, "请回复一条消息, 或者指定作品链接")
+		return nil
+	}
+
+	if err := serv.DeleteCachedArtworkByURL(ctx, sourceURL); err != nil {
+		utils.ReplyMessage(ctx, message, "删除作品缓存失败: "+err.Error())
+		return nil
+	}
+
+	artwork, err := serv.GetArtworkByURL(ctx, sourceURL)
+	if errors.Is(err, errs.ErrRecordNotFound) {
+		utils.ReplyMessage(ctx, message, "作品未发布, 缓存已删除")
+		return nil
+	}
+	if err != nil {
+		utils.ReplyMessage(ctx, message, "获取作品信息失败: "+err.Error())
+		return nil
+	}
+	for _, picture := range artwork.Pictures {
+		// newInfo := &shared.TelegramInfo{
+		// 	MessageID:    picture.TelegramInfo.Data().MessageID,
+		// 	MediaGroupID: picture.TelegramInfo.Data().MediaGroupID,
+		// }
+		newInfo := picture.TelegramInfo.Data()
+		newInfo.ClearFileIDs()
+		if err := serv.UpdatePictureTelegramInfo(ctx, picture.ID, &newInfo); err != nil {
+			utils.ReplyMessage(ctx, message, "刷新作品信息失败: "+err.Error())
+			return nil
+		}
+	}
+	utils.ReplyMessage(ctx, message, "已刷新作品信息")
+	return nil
+}
+
+func ReCaptionArtwork(ctx *telegohandler.Context, message telego.Message) error {
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	if !utils.CheckPermissionInGroup(ctx, serv, message, shared.PermissionEditArtwork) {
+		utils.ReplyMessage(ctx, message, "你没有编辑作品的权限")
+		return nil
+	}
+	var sourceURL string
+	if message.ReplyToMessage != nil {
+		sourceURL = utils.FindSourceURLInMessage(serv, message.ReplyToMessage)
+	} else {
+		sourceURL = serv.FindSourceURL(message.Text)
+	}
+	if sourceURL == "" {
+		utils.ReplyMessage(ctx, message, "请回复一条消息, 或者指定作品链接")
+		return nil
+	}
+	artwork, err := serv.GetArtworkByURL(ctx, sourceURL)
+	if err != nil {
+		utils.ReplyMessage(ctx, message, "获取作品信息失败: "+err.Error())
+		return nil
+	}
+	meta, err := requireMeta(ctx)
+	if err != nil {
+		return err
+	}
+	if artwork.FirstMedia().GetTelegramInfo().MessageID(meta.ChannelChatID().ID) == 0 {
+		utils.ReplyMessage(ctx, message, "该作品未在频道发布")
+		return nil
+	}
+	ctx.Bot().EditMessageCaption(ctx, &telego.EditMessageCaptionParams{
+		ChatID:    meta.ChannelChatID(),
+		MessageID: artwork.FirstMedia().GetTelegramInfo().MessageID(meta.ChannelChatID().ID),
+		Caption:   utils.ArtworkHTMLCaption(artwork),
+		ParseMode: telego.ModeHTML,
+	})
+	utils.ReplyMessage(ctx, message, "已重新生成作品描述")
+	return nil
+}
+
+func AutoTaggingArtwork(ctx *telegohandler.Context, message telego.Message) error {
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	if !utils.CheckPermissionInGroup(ctx, serv, message, shared.PermissionEditArtwork) {
+		utils.ReplyMessage(ctx, message, "你没有编辑作品的权限")
+		return nil
+	}
+	var sourceURL string
+	if message.ReplyToMessage != nil {
+		sourceURL = utils.FindSourceURLInMessage(serv, message.ReplyToMessage)
+	} else {
+		sourceURL = serv.FindSourceURL(message.Text)
+	}
+	if sourceURL == "" {
+		helpText := `
+[管理员] <b>使用 /autotag 命令回复一条包含作品链接的消息, 或在参数中提供作品链接, 将基于AI自动为该作品添加标签</b>
+
+命令语法: /autotag [作品链接]
+`
+		utils.ReplyMessageWithHTML(ctx, message, helpText)
+		return nil
+	}
+
+	artwork, err := serv.GetArtworkByURL(ctx, sourceURL)
+	if err != nil {
+		utils.ReplyMessage(ctx, message, "获取作品信息失败: "+err.Error())
+		return nil
+	}
+	msg, err := utils.ReplyMessage(ctx, message, "正在请求...")
+	if err != nil {
+		return oops.Wrapf(err, "failed to send message")
+	}
+	if err := serv.PredictAndUpdateArtworkTags(ctx, artwork.ID); err != nil {
+		log.Errorf("failed to predict and update artwork tags: %s", err)
+		ctx.Bot().EditMessageText(ctx, &telego.EditMessageTextParams{
+			ChatID:    msg.Chat.ChatID(),
+			MessageID: msg.MessageID,
+			Text:      "自动添加作品标签失败: " + err.Error(),
+		})
+		return nil
+	}
+	newAw, err := serv.GetArtworkByURL(ctx, sourceURL)
+	if err != nil {
+		log.Errorf("failed to get artwork by url after autotag: %s", err)
+		ctx.Bot().EditMessageText(ctx, &telego.EditMessageTextParams{
+			ChatID:    msg.Chat.ChatID(),
+			MessageID: msg.MessageID,
+			Text:      "获取更新后的作品信息失败: " + err.Error(),
+		})
+		return nil
+	}
+	meta, err := requireMeta(ctx)
+	if err != nil {
+		return err
+	}
+	if msgId := newAw.FirstMedia().GetTelegramInfo().MessageID(meta.ChannelChatID().ID); msgId != 0 {
+		caption := utils.ArtworkHTMLCaption(newAw)
+		ctx.Bot().EditMessageCaption(ctx, &telego.EditMessageCaptionParams{
+			ChatID:    meta.ChannelChatID(),
+			MessageID: msgId,
+			Caption:   caption,
+			ParseMode: telego.ModeHTML,
+		})
+	}
+	ctx.Bot().EditMessageText(ctx, &telego.EditMessageTextParams{
+		ChatID:    msg.Chat.ChatID(),
+		MessageID: msg.MessageID,
+		Text:      "更新作品标签成功",
+	})
+	return nil
+}
+
+func ReindexArtworks(ctx *telegohandler.Context, message telego.Message) error {
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	if !utils.CheckPermissionInGroup(ctx, serv, message, shared.PermissionEditArtwork) {
+		utils.ReplyMessage(ctx, message, "你没有编辑作品的权限")
+		return nil
+	}
+	var sourceURL string
+	if message.ReplyToMessage != nil {
+		sourceURL = utils.FindSourceURLInMessage(serv, message.ReplyToMessage)
+	} else {
+		sourceURL = serv.FindSourceURL(message.Text)
+	}
+	if sourceURL == "" {
+		helpText := `
+[管理员] <b>使用 /reindex 命令回复一条包含作品链接的消息, 或在参数中提供作品链接, 将重新索引该作品到搜索引擎</b>
+
+命令语法: /reindex [作品链接]
+`
+		utils.ReplyMessageWithHTML(ctx, message, helpText)
+		return nil
+	}
+
+	artwork, err := serv.GetArtworkByURL(ctx, sourceURL)
+	if err != nil {
+		utils.ReplyMessage(ctx, message, "获取作品信息失败: "+err.Error())
+		return nil
+	}
+	if err := serv.ReIndexArtworks(ctx, []ouid.OUID{artwork.ID}); err != nil {
+		utils.ReplyMessage(ctx, message, "重新索引作品失败: "+err.Error())
+		return nil
+	}
+	utils.ReplyMessage(ctx, message, "已重新索引该作品")
+	return nil
+}

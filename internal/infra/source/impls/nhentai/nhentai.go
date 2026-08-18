@@ -1,0 +1,65 @@
+package nhentai
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/imroc/req/v3"
+	config "github.com/wwwangzilin/LotsACG-Standalone/internal/infra/config/runtimecfg"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/model/dto"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/shared"
+	"github.com/wwwangzilin/LotsACG-Standalone/pkg/strutil"
+)
+
+type Nhentai struct {
+	reqClient *req.Client
+	cfg       config.SourceNhentaiConfig
+}
+
+func Init() {
+	cfg := config.Get().Source.Nhentai
+	if cfg.Disable {
+		return
+	}
+	client := req.C().ImpersonateChrome().SetCommonRetryCount(3)
+	if config.Get().Source.Proxy != "" {
+		client.SetProxyURL(config.Get().Source.Proxy)
+	}
+	source.Register(shared.SourceTypeNhentai, func() source.ArtworkSource {
+		return &Nhentai{
+			cfg:       config.Get().Source.Nhentai,
+			reqClient: client,
+		}
+	})
+}
+
+func (n *Nhentai) FetchNewArtworks(ctx context.Context, limit int) ([]*dto.FetchedArtwork, error) {
+	return nil, nil
+}
+
+func (n *Nhentai) GetArtworkInfo(ctx context.Context, sourceURL string) (*dto.FetchedArtwork, error) {
+	galleryID := GetGalleryID(sourceURL)
+	if galleryID == "" {
+		return nil, ErrorInvalidNhentaiURL
+	}
+	return n.crawlGallery(ctx, galleryID)
+}
+
+func (n *Nhentai) MatchesSourceURL(text string) (string, bool) {
+	galleryID := GetGalleryID(text)
+	if galleryID == "" {
+		return "", false
+	}
+	return sourceURLPrefix + galleryID, true
+}
+
+// PrettyFileName implements source.ArtworkSource.
+func (n *Nhentai) PrettyFileName(artwork shared.ArtworkLike, picture shared.PictureLike) string {
+	galleryID := GetGalleryID(artwork.GetSourceURL())
+	ext, _ := strutil.GetFileExtFromURL(picture.GetOriginal())
+	if galleryID == "" {
+		return fmt.Sprintf("nhentai_%s%s", strutil.MD5Hash(picture.GetOriginal()), ext)
+	}
+	return fmt.Sprintf("nhentai_%s_%d%s", galleryID, picture.GetIndex(), ext)
+}

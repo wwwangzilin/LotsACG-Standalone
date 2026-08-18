@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Pixiv-XP-Pusher{% endblock %}
+
+{% block content %}
+<!-- 统计概览 -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">📊 推送统计 (7天)</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="stat-value">{{ stats.total_pushed }}</div>
+            <div class="stat-label">推送作品</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ stats.likes }}</div>
+            <div class="stat-label">❤️ 喜欢</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ stats.dislikes }}</div>
+            <div class="stat-label">👎 不喜欢</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ like_rate }}</div>
+            <div class="stat-label">点赞率</div>
+        </div>
+    </div>
+</div>
+
+<!-- XP 画像词云 -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">🎯 XP 画像 Top 20</h2>
+    </div>
+    {% if top_tags %}
+    <div class="tag-cloud">
+        {% for tag, weight in top_tags %}
+        <span class="tag" style="font-size: {{ 0.8 + weight * 0.1 }}rem;">
+            {{ tag }}
+            <span class="weight">{{ "%.1f"|format(weight) }}</span>
+        </span>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: var(--text-secondary);">暂无数据，请先运行一次推送任务。</p>
+    {% endif %}
+</div>
+
+<!-- 热门画师 -->
+{% if stats.top_artists %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">🎨 热门画师 (7天)</h2>
+    </div>
+    <div class="tag-cloud">
+        {% for artist_id, count in stats.top_artists %}
+        <a href="https://www.pixiv.net/users/{{ artist_id }}" target="_blank" class="tag"
+            style="text-decoration: none;">
+            ID: {{ artist_id }}
+            <span class="weight">{{ count }} 张</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- 热门标签 -->
+{% if stats.top_tags %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">🏷️ 热门推送标签 (7天)</h2>
+    </div>
+    <div class="tag-cloud">
+        {% for tag, count in stats.top_tags %}
+        <span class="tag">
+            #{{ tag }}
+            <span class="weight">{{ count }}</span>
+        </span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- 快捷操作 -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">⚡ 快捷操作</h2>
+    </div>
+    <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+        使用命令行执行推送任务，或通过 Telegram Bot 发送 <code>/push</code> 指令。
+    </p>
+    <code style="display: block; background: var(--bg-secondary); padding: 1rem; border-radius: 6px;">
+        python main.py --once
+    </code>
+</div>
+{% endblock %}

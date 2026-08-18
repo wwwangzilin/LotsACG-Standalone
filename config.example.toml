@@ -1,0 +1,245 @@
+# LotsACG 完整配置示例
+# 复制为 config.toml 后按需修改。所有字段都有默认值, 未填写的段可整段删除。
+# 运行: ./lotsacg  (或 go run ./cmd)
+
+# ────────────────────────── Telegram Bot ──────────────────────────
+[telegram]
+bot_token = "123456:ABCDEF"           # @BotFather 创建的 bot token
+# api_url = ""                        # 可选: 自定义 Telegram API 地址 (反代/本地 bot api)
+username = "@lotsacg_bot"             # bot 用户名 (含 @)
+admins = [123456789]                  # 管理员 Telegram ID (sudo 权限)
+# allowed_users = [123456789]         # 可选: 用户白名单, 未登记用户只能 /start /help /files
+caption_template = ""                 # 可选: 作品说明模板
+chat_id = -1001111111111              # 主频道 (普通作品)
+
+# 额外目标频道: R18 作品自动发到这里 (第一个有效配置作为 R18 分流频道)
+# [[telegram.extra_target]]
+# title = "R18频道"
+# chat_id = -1002222222222
+
+# 除主频道外的更多发送频道 (配置文件方式, 等价于 /channel add)。
+# 作品发布时会按各频道规则自动推送 (不落库)。也可在 bot 里用 /channel 命令动态添加/修改。
+# 规则说明:
+#   r18_mode: follow=跟随(默认) / allow=允许R18 / deny=拒绝R18 / only=仅R18
+#   link_only: true 时只发文本+原图链接 (不下载/上传图片, 节约流量)
+#   include_tags: 标签白名单, 作品标签任一命中即发布 (空=不限制)
+#   exclude_tags: 标签黑名单, 任一命中即拒绝
+#   include_artists / exclude_artists: 画师白名单/黑名单
+# [[telegram.send_channels]]
+# chat_id = -1004444444444
+# title = "安全频道"
+# enabled = true
+# r18_mode = "deny"
+# link_only = false
+# include_tags = []
+# exclude_tags = ["scat", "gore"]
+# include_artists = []
+# exclude_artists = []
+
+# ────────────────────────── 数据库 ──────────────────────────
+[database]
+type = "sqlite"                       # sqlite / postgres / mysql
+dsn = "lotsacg.db"
+
+# ────────────────────────── KV 存储 ──────────────────────────
+[kvdb]
+type = "bbolt"                        # bbolt / redis
+path = "data/kvdb.bbolt"
+
+# ────────────────────────── 搜索 / 查重 ──────────────────────────
+[search]
+enable = false                        # 是否启用搜索 (查重/以图搜图依赖)
+# engine = "meilisearch"
+# [search.meilisearch]
+# host = "http://127.0.0.1:7700"
+# key = ""
+# index = "lotsacg"
+dup_check_enable = true               # 图片查重 (可 /dupcheck 实时切换)
+
+# 本地特征点以图搜图 (可选, 无需外部服务)
+[imseek]
+enable = false
+data_dir = "./data/imseek"
+distance = 64
+count = 10
+k = 3
+nprobe = 3
+nfeatures = 500
+max_height = 1080
+max_width = 768
+auto_build = true
+build_debounce_sec = 2
+min_matches = 8
+min_score = 25
+
+# ────────────────────────── AI API (可选) ──────────────────────────
+# /recommend 自动关联 tag; 支持任意 OpenAI 兼容接口
+[aiapi]
+enable = false
+base_url = "https://api.openai.com/v1"   # 或 DeepSeek / Ollama / 本地
+api_key = ""
+model = "gpt-4o-mini"
+recommend_tags = 12
+auto_tag = false                      # 新作品入库时用 AI 自动补标签
+
+# 备用 AI 配置 ([aiapi] 未启用时生效); [xpaiapi.pixiv] 用于 Pixiv OAuth 兜底
+[xpaiapi]
+enabled = false
+provider = "openai"                   # openai / local
+api_key = ""
+base_url = "https://api.openai.com/v1"
+model = "gpt-4o-mini"
+auto_tag = false
+
+[xpaiapi.embedding]
+model = "text-embedding-3-small"
+dimensions = 1536
+
+# [xpaiapi.pixiv]
+# refresh_token = ""
+# user_id = ""
+
+# ────────────────────────── 存储 ──────────────────────────
+[storage]
+original_type = "telegram"            # telegram / local / webdav / alist
+regular_length = 2560
+regular_format = "webp"
+thumb_length = 500
+thumb_format = "avif"
+cache_dir = "./imgcache"
+cache_ttl = 14400
+
+[storage.telegram]
+enable = true
+token = "123456:ABCDEF"               # 存储用 bot token (可与主 bot 相同)
+chat_id = -1003333333333              # 私有存储频道
+
+# [storage.local]
+# enable = true
+# path = "./data/storage"
+
+# [storage.webdav]
+# enable = true
+# url = "https://dav.example.com"
+# username = ""
+# password = ""
+# path = "/lotsacg"
+
+# ────────────────────────── 数据源 ──────────────────────────
+[source.pixiv]
+img_proxy = "pximg.manyacg.top"       # 主图片代理
+img_proxies = ["pixiv.cat", "i.muxmus.com"]  # 备用代理, 按顺序降级
+
+# 单账号 (兼容旧写法)
+[[source.pixiv.cookies]]
+name = "PHPSESSID"
+value = ""
+[[source.pixiv.cookies]]
+name = "yuid_b"
+value = ""
+
+# 多账号轮询 (可选)
+# [[source.pixiv.accounts]]
+# name = "账号A"
+# [[source.pixiv.accounts.cookies]]
+# name = "PHPSESSID"
+# value = ""
+
+[source.twitter]
+# cookies = ""                        # 可选: 提高推特抓取成功率
+
+[source.danbooru]
+# username = ""
+# password = ""
+
+[source.bilibili]
+disable = false
+
+[source.kemono]
+disable = false
+
+[source.yandere]
+disable = false
+
+[source.nhentai]
+disable = false
+
+[source]
+proxy = ""                            # 可选: 全局代理 (http://user:pass@host:port), 如 http://127.0.0.1:7899
+
+# ────────────────────────── AI 打标 (可选) ──────────────────────────
+[tagging]
+enable = false
+# engine = "konatagger"
+# [tagging.konatagger]
+# host = "http://127.0.0.1:8080"
+# token = ""
+# timeout = 30
+tagnew = false
+
+# ────────────────────────── Web / REST ──────────────────────────
+[rest]
+enable = true                         # 是否启用 Web 网站/API
+addr = ":8080"
+web_dir = "web-dist"                  # 内置 Web 前端静态目录, 为空则不托管前端
+# base: 图片访问基地址。配置后 API 返回本地 /api/v1/picture/file/... 代理地址
+# (不依赖外部图床, 兼容图片外链不可达的部署环境)
+base = "http://127.0.0.1:8080"
+public_url = "http://127.0.0.1:8080"  # Web 前端对外访问地址 (启动日志用)
+
+[rest.site]
+title = "LotsACG - Kawaii is all you need"
+desc = "ACG Image Collector and Gallery Server"
+name = "LotsACG"
+url = "https://example.com"
+
+# [rest.limit]
+# enable = true
+# expiration = 60
+# max = 100
+
+# ────────────────────────── 监控 ──────────────────────────
+# 画师关注 / 标签订阅 检查间隔 (秒), 0=不启用
+[scheduler]
+watch_interval = 600
+
+# ────────────────────────── XP-Pusher (内嵌 Python) ──────────────────────────
+# 管理命令: /xppusher start|stop|restart|log|key
+# 源码内嵌进 exe, 首次启动自动提取到 <exe>/xppusher, 自动建 venv 装依赖
+[xppusher]
+# dir = "D:/projects/xp/Pixiv-XP-Pusher"   # 可选: 外部部署目录 (不填用 exe 内嵌)
+# config = "D:/projects/xp/Pixiv-XP-Pusher/config.yaml"  # 可选: 首次提取用此文件初始化 config.yaml
+# python = ""                              # 可选: 指定解释器 (默认自动选/建 venv)
+# command = "main.py"
+# args = "--now"                           # 默认 --now: 启动立即跑一轮推荐
+auto_start = true                         # exe 启动时自动拉起 XP-Pusher
+
+# XP-Pusher 的 config.yaml 中可用:
+#   notifier.telegram.link_only: true  → 链接模式: 只推文本+链接, 不下载图片
+#   lotsacg.url / lotsacg.api_key      → 「推送到群」按钮用的地址与 API Key (/xppusher key 生成)
+
+# ────────────────────────── kmua-bot (内嵌 Python 群聊机器人) ──────────────────────────
+# 管理命令: /kmua start|stop|restart|log
+# 源码内嵌进 exe, 首次启动自动提取到 <exe>/kmua, 用 uv 装依赖 (Python 3.13, 需联网, 首次较久)
+[kmua]
+# dir = "D:/projects/kmua-bot"          # 可选: 外部源码目录 (不填用 exe 内嵌)
+# uv = ""                              # 可选: uv 路径 (默认在 PATH 中查找)
+# python = ""                          # 可选: 指定解释器 (默认用 uv 管理, 自动下载 Python 3.13)
+# command = "-m kmua"
+# args = ""                            # 附加参数 (空格分隔)
+auto_start = false                     # exe 启动时自动拉起 kmua-bot
+
+# 以下字段在首次生成 settings.toml 时写入 (settings.toml 已存在则不覆盖):
+# token = ""                           # kmua-bot 的 bot token (需独立 bot, 不能与 LotsACG 共用)
+# owners = []                          # owner Telegram ID 列表
+# proxy = ""                           # Telegram 连接代理 (GFW 环境需要), 如 http://127.0.0.1:7899
+# webapp = false                       # 启用管理面板 (Telegram Mini App)
+# webapp_port = 8180                   # 面板端口
+# webapp_url = "https://xxx.example.com"  # 面板公网 HTTPS 地址 (Telegram 不会打开 HTTP 的 Mini App)
+# webapp_short_name = "panel"          # BotFather /newapp 注册的 short name
+
+# ────────────────────────── 日志 ──────────────────────────
+[log]
+level = "info"
+file_level = "info"
+file = "logs/lotsacg.log"

@@ -1,0 +1,45 @@
+package infra
+
+import (
+	"context"
+
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/config/runtimecfg"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/database"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/kvstor"
+	"github.com/samber/oops"
+)
+
+// Init initializes the infra package, return the closer function and error if any.
+func Init(ctx context.Context, cfg runtimecfg.Config) (func() error, error) {
+	var errs []error
+	var closerFuncs []func() error
+	kvstor.Init(cfg.KVDB)
+	closerFuncs = append(closerFuncs, func() error {
+		return kvstor.Close()
+	})
+	initSource()
+	if err := initStorage(ctx); err != nil {
+		errs = append(errs, err)
+	}
+	database.Init(ctx)
+	// if err := cache.Init(); err != nil {
+	// 	errs = append(errs, err)
+	// } else {
+	// 	closerFuncs = append(closerFuncs, func() error {
+	// 		return cache.Close()
+	// 	})
+	// }
+
+	return func() error {
+		var errs []error
+		for _, closer := range closerFuncs {
+			if err := closer(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if len(errs) > 0 {
+			return oops.Join(errs...)
+		}
+		return nil
+	}, oops.Join(errs...)
+}

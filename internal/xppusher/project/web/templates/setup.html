@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}初始设置 - Pixiv-XP-Pusher{% endblock %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 5rem auto;">
+    <div class="card">
+        <h1 style="text-align: center; margin-bottom: 0.5rem; color: var(--accent);">🔐 首次设置</h1>
+        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">请设置访问密码</p>
+
+        <form method="post" action="/setup">
+            <input type="password" name="password" placeholder="设置密码 (至少6位)" required minlength="6"
+                style="width: 100%; margin-bottom: 1rem;">
+            <input type="password" name="confirm" placeholder="确认密码" required style="width: 100%; margin-bottom: 1rem;">
+            <button type="submit" class="btn" style="width: 100%;">确认</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

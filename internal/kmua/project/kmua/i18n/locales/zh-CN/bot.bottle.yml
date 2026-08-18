@@ -1,0 +1,55 @@
+bot:
+  msg:
+    bottle:
+      no_content: 往瓶子里装点什么吧~
+      text_too_lang: 太长了, 进不去!
+      not_enough_coins: 你没有可以用的瓶子了呢
+      not_enough_coins_to_pick: 你在海岸边等了很久, 但大海没有给你任何瓶子~
+      throw_success: 这个瓶子被你成功地扔进了大海🌊🍾
+      throw_failed: 你尝试把瓶子扔进大海, 但大海抛给你了一个异常
+      no_bottles: 你在海岸边找了很久, 但什么也没捡到~
+      unsupported_media: 你捡到了一个瓶子, 但无论如何也理解不了里面的内容
+      unsupported_media_throw: 大海无法理解你的瓶子装了什么~
+      not_your_bottle: 这个瓶子不是你的哦
+      throw_back_success: 你把瓶子又扔回了大海🌊🍾
+      report_failed: 名为异常的海浪冲走了你的举报请求
+      report_success: 大海感谢你的守护~
+      destroy_failed: 销毁失败了
+      destroy_success: 这个瓶子被你销毁了呢
+      not_found: 没有找到这个瓶子呢
+      seek_result: 这个瓶子是由 {sender} 在 {created_at} 扔进大海的哦
+      seek_result_admin: "这个瓶子是由 {sender} 在 {created_at} 扔进大海的哦\n发送者ID: <code>{sender_id}</code>"
+      pick_disabled_in_chat: 这里不允许捡漂流瓶哦
+      pick_failed: 你在海边徘徊许久, 大海回馈你的是一个异常
+      reply_prompt: 请选择回复方式
+      reply_waiting: 请直接回复这条瓶子消息来回复
+      reply_sent: 你的回信已经被送出去了💌
+      reply_failed: 回信发送失败了...
+      reply_received_anonymous: "有人给你的漂流瓶回信了💌\n\n{content}"
+      reply_received: "有人给你的漂流瓶回信了💌\n\n来自: {sender}\n\n{content}"
+      reply_received_anonymous_header: 有人给你的漂流瓶回信了💌
+      reply_received_header: "{sender} 给你的漂流瓶回信了💌"
+      reply_bottle_preview: "你的瓶子:\n{preview}"
+      bottle_preview_media: "[媒体内容]"
+      reply_cancelled: 已取消回复
+      no_reply_content: 回信内容不能为空哦
+      reply_text_too_long: 回信太长了, 进不去!
+      bottle_destroyed: 已销毁这个瓶子
+      bottle_kept: 已将瓶子扔回大海
+      reply_too_fast: 回信发送太频繁了，请稍后再试~
+      reply_bottle_not_found: 这个瓶子已经消失在大海中了
+      reply_sender_not_found: 瓶子的主人已经消失在大海中了
+      ban_success: "已封禁用户 {user_id}, 删除了 {count} 个瓶子"
+      ban_no_permission: 你没有权限使用此命令
+  button:
+    bottle:
+      throw_back: 扔回大海
+      destroy: 销毁瓶子
+      report: 举报瓶子
+      seek: 追寻踪迹
+      reply: 回复瓶子
+      reply_anonymous: 匿名回复
+      reply_public: 公开回复
+      cancel_reply: 取消
+      destroy_bottle_after_reply: 销毁瓶子
+      keep_bottle_after_reply: 扔回大海

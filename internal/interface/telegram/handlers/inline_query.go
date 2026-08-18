@@ -1,0 +1,110 @@
+package handlers
+
+import (
+	"fmt"
+	"math/rand"
+
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/config/runtimecfg"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/interface/telegram/handlers/utils"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/model/query"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/shared"
+	"github.com/wwwangzilin/LotsACG-Standalone/pkg/log"
+	"github.com/wwwangzilin/LotsACG-Standalone/pkg/strutil"
+	"github.com/samber/oops"
+	"github.com/unvgo/ouid"
+
+	"github.com/mymmrac/telego"
+	"github.com/mymmrac/telego/telegohandler"
+	"github.com/mymmrac/telego/telegoutil"
+)
+
+func InlineQuery(ctx *telegohandler.Context, inlineQuery telego.InlineQuery) error {
+	queryText := inlineQuery.Query
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	meta, err := requireMeta(ctx)
+	if err != nil {
+		return err
+	}
+	if url := serv.FindSourceURL(queryText); url != "" {
+		artwork, err := serv.GetOrFetchCachedArtwork(ctx, url)
+		if err != nil {
+			ctx.Bot().AnswerInlineQuery(ctx, telegoutil.InlineQuery(inlineQuery.ID, telegoutil.ResultArticle(ouid.New().Hex(), "获取作品失败", telegoutil.TextMessage(url))))
+			return nil
+		}
+		pics := artwork.Artwork.Data().Pictures
+		results := make([]telego.InlineQueryResult, 0, min(len(pics), 48))
+		caption := utils.ArtworkHTMLCaption(artwork)
+		wsrvUrl := runtimecfg.Get().Wsrv.URL
+		for _, picture := range pics {
+			if picFileId := picture.TelegramInfo.FileID(meta.BotID(), shared.TelegramMediaTypePhoto); picFileId != "" {
+				result := telegoutil.ResultCachedPhoto(ouid.New().Hex(), picFileId).WithCaption(caption).WithParseMode(telego.ModeHTML)
+				results = append(results, result)
+				continue
+			}
+			if wsrvUrl == "" {
+				continue
+			}
+			result := telegoutil.ResultPhoto(ouid.New().Hex(),
+				fmt.Sprintf("%s/?url=%s&w=2560&h=2560&we&output=jpg", wsrvUrl,
+					picture.Original), picture.Thumbnail).WithCaption(caption).WithParseMode(telego.ModeHTML)
+			results = append(results, result)
+		}
+		if err := ctx.Bot().AnswerInlineQuery(ctx, &telego.AnswerInlineQueryParams{
+			InlineQueryID: inlineQuery.ID,
+			Results:       results,
+			CacheTime:     10,
+		}); err != nil {
+			return oops.Wrapf(err, "failed to answer inline query")
+		}
+		return nil
+	}
+	texts := strutil.ParseTo2DArray(queryText, "|", " ")
+	artworks, err := serv.QueryArtworks(ctx, query.ArtworksDB{
+		ArtworksFilter: query.ArtworksFilter{
+			R18:        shared.R18TypeAll,
+			Keywords:   texts,
+			HasPicture: true,
+		},
+		Paginate: query.Paginate{
+			Limit:  48,
+			Offset: 0,
+		},
+		Random: true,
+	})
+	if err != nil || len(artworks) == 0 {
+		log.Errorf("获取图片失败: %s", err)
+		ctx.Bot().AnswerInlineQuery(ctx, telegoutil.InlineQuery(inlineQuery.ID, telegoutil.ResultArticle(ouid.New().Hex(), "未找到相关图片", telegoutil.TextMessage(fmt.Sprintf(`
+未找到相关图片 (搜索: %s)
+
+<b>在任意聊天框中输入 @%s [关键词参数] 来查找相关图片</b>`, utils.EscapeHTML(queryText), utils.EscapeHTML(meta.BotUsername()))).WithParseMode(telego.ModeHTML))))
+		return nil
+	}
+	results := make([]telego.InlineQueryResult, 0)
+	for _, artwork := range artworks {
+		if len(artwork.Pictures) == 0 {
+			continue
+		}
+		pictureIndex := rand.Intn(len(artwork.Pictures))
+		picture := artwork.Pictures[pictureIndex]
+		if picture.TelegramInfo.Data().FileID(meta.BotID(), shared.TelegramMediaTypePhoto) == "" {
+			continue
+		}
+		result := telegoutil.
+			ResultCachedPhoto(ouid.New().Hex(),
+				picture.TelegramInfo.Data().FileID(meta.BotID(), shared.TelegramMediaTypePhoto)).
+			WithCaption(fmt.Sprintf("<a href=\"%s\">%s</a>", artwork.SourceURL, utils.EscapeHTML(artwork.Title))).
+			WithParseMode(telego.ModeHTML).WithReplyMarkup(telegoutil.InlineKeyboard(utils.GetPostedArtworkInlineKeyboardButton(artwork, meta)))
+		results = append(results, result)
+	}
+	if err := ctx.Bot().AnswerInlineQuery(ctx, &telego.AnswerInlineQueryParams{
+		InlineQueryID: inlineQuery.ID,
+		Results:       results,
+		CacheTime:     1,
+	}); err != nil {
+		return oops.Wrapf(err, "failed to answer inline query")
+	}
+	return nil
+}

@@ -1,0 +1,121 @@
+name: Build and Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  VERSION: ${{ github.ref_name }}
+  BUILD_TIME: ${{ format(github.event.repository.updated_at, 'yyyy-MM-dd HH:mm:ss') }}
+  COMMIT: ${{ github.sha }}
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') && ' (Pre-release)' || '' }}
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+
+      - name: Setup node for changelog
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate changelog
+        run: npx changelogithub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  linux-amd64-static-libvips:
+    name: Build linux/amd64 with libvips
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build static binary with alpine (Docker)
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --build-arg VERSION=${VERSION} \
+            --build-arg BUILD_AT="${BUILD_TIME}" \
+            --build-arg GIT_COMMIT=${COMMIT} \
+            --target exporter \
+            --output type=local,dest=./output \
+            -f scripts/Dockerfile.vips \
+            .
+
+      - name: Prepare build script for go-release-action
+        run: |
+          cat > build.sh <<'EOF'
+          #!/bin/sh
+          if [ -z "$BUILD_ARTIFACTS_FOLDER" ]; then
+            while [ $# -gt 0 ]; do
+              if [ "$1" = "-o" ]; then
+                out="$2"
+                break
+              fi
+              shift
+            done
+            BUILD_ARTIFACTS_FOLDER=$(dirname "$out")
+          fi
+          mkdir -p "$BUILD_ARTIFACTS_FOLDER"
+          cp ./output/lotsacg "$BUILD_ARTIFACTS_FOLDER/lotsacg"
+          chmod +x "$BUILD_ARTIFACTS_FOLDER/lotsacg"
+          EOF
+          chmod +x build.sh
+
+      - name: Upload linux/amd64 asset via wangyoucao577/go-release-action
+        uses: wangyoucao577/go-release-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          goos: linux
+          goarch: amd64
+          binary_name: lotsacg
+          build_command: ./build.sh
+
+  cross-compile:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }} Binaries
+    needs: create-release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: linux
+            goarch: amd64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Release Go Binary
+        uses: wangyoucao577/go-release-action@v1
+        with:
+          pre_command: export CGO_ENABLED=0
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          ldflags: >-
+            -s -w
+            -X "github.com/wwwangzilin/LotsACG-Standalone/internal/common/version.Version=${{ env.VERSION }}"
+            -X "github.com/wwwangzilin/LotsACG-Standalone/internal/common/version.BuildTime=${{ env.BUILD_TIME }}"
+            -X "github.com/wwwangzilin/LotsACG-Standalone/internal/common/version.Commit=${{ env.COMMIT }}"
+          binary_name: lotsacg

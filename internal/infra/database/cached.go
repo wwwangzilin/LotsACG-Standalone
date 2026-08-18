@@ -1,0 +1,84 @@
+package database
+
+import (
+	"context"
+
+	"github.com/unvgo/ouid"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/model/entity"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/shared"
+	"gorm.io/gorm"
+)
+
+func (d *DB) CreateCachedArtwork(ctx context.Context, data *entity.CachedArtwork) (*entity.CachedArtwork, error) {
+	result := gorm.WithResult()
+	err := gorm.G[entity.CachedArtwork](d.db, result).Create(ctx, data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (d *DB) GetCachedArtworkByURL(ctx context.Context, sourceUrl string) (*entity.CachedArtwork, error) {
+	res, err := gorm.G[entity.CachedArtwork](d.db).Where("source_url = ?", sourceUrl).First(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (d *DB) UpdateCachedArtworkStatusByURL(ctx context.Context, sourceUrl string, status shared.ArtworkStatus) error {
+	return d.db.WithContext(ctx).Model(&entity.CachedArtwork{}).Where("source_url = ?", sourceUrl).Update("status", status).Error
+}
+
+func (d *DB) DeleteCachedArtworkByURL(ctx context.Context, sourceUrl string) error {
+	n, err := gorm.G[entity.CachedArtwork](d.db).Where("source_url = ?", sourceUrl).Delete(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (d *DB) DeleteCachedArtworkByID(ctx context.Context, id ouid.OUID) error {
+	n, err := gorm.G[entity.CachedArtwork](d.db).Where("id = ?", id).Delete(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (d *DB) SaveCachedArtwork(ctx context.Context, artwork *entity.CachedArtwork) (*entity.CachedArtwork, error) {
+	err := d.db.WithContext(ctx).Save(artwork).Error
+	if err != nil {
+		return nil, err
+	}
+	return artwork, nil
+}
+
+func (d *DB) ResetPostingCachedArtworkStatus(ctx context.Context) error {
+	return d.db.WithContext(ctx).Model(&entity.CachedArtwork{}).Where("status = ?", shared.ArtworkStatusPosting).Update("status", shared.ArtworkStatusCached).Error
+}
+
+// CountCachedArtwork 返回缓存作品总数。
+func (d *DB) CountCachedArtwork(ctx context.Context) (int64, error) {
+	var count int64
+	err := d.db.WithContext(ctx).Model(&entity.CachedArtwork{}).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// GetCachedArtworkByID implements repo.CachedArtwork.
+func (d *DB) GetCachedArtworkByID(ctx context.Context, id ouid.OUID) (*entity.CachedArtwork, error) {
+	res, err := gorm.G[entity.CachedArtwork](d.db).Where("id = ?", id).First(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}

@@ -1,0 +1,7 @@
+logs/
+cache/
+downloads/
+.github/
+geoip.mmdb
+.venv/
+frontend/

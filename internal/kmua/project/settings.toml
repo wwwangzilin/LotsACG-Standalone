@@ -1,0 +1,93 @@
+token = ""
+owners = []
+db_url = "sqlite+aiosqlite:///./data/kmua.db"
+session_name = "kmua"
+api_id = 1025907
+api_hash = "452b0359b988148995f22ff0f4229750"
+use_ipv6 = false
+proxy = ""
+log_retention_days = 30
+log_level = "INFO"
+lang = "zh-CN"
+
+# Telegram Mini App 管理面板.
+# 面板与健康检查共用一个 FastAPI 服务和一个端口; webapp = false 时只提供
+# /health 与 /ready, 容器健康检查不受影响.
+# webapp = false
+# webapp_host = "0.0.0.0"
+# webapp_port = 8180
+# 公网 HTTPS 地址, 启用面板时必填 (Telegram 不会打开 HTTP 的 Mini App)
+# webapp_url = ""
+# 在 BotFather 用 /newapp 注册的 Mini App short name.
+# 群内 /config 的深链 t.me/<bot>/<short_name>?startapp=... 需要它
+# webapp_short_name = "panel"
+# webapp_menu_button = true
+# 会话令牌签名密钥; 留空则从 bot token 派生 (推荐)
+# webapp_jwt_secret = ""
+# webapp_jwt_ttl = 21600
+# initData 有效期(秒), 防重放
+# webapp_initdata_ttl = 300
+# CORS 白名单, 仅本地开发用 (pnpm dev 跑在另一个源上)
+# webapp_allow_origins = []
+# 信任其 X-Forwarded-For 的地址(用于限流和日志).
+# 默认只信任本机, 反代在同一台机器上时不用改.
+# webapp_trusted_proxies = ["127.0.0.1", "::1"]
+# 前端产物目录, 留空则用 kmua/webapp/dist
+# webapp_static_dir = ""
+# 是否允许在后台编辑用户信息 (coins/affection/全局管理员仍额外要求 owner)
+# webapp_admin_edit_user = true
+
+redis = false
+redis_endpoint = "localhost"
+redis_port = 6379
+redis_db = 0
+redis_password = ""
+
+agent = false
+agent_model = "gpt-4o-mini"
+agent_provider_url = "https://api.openai.com/v1"
+agent_api_key = ""
+agent_messages_threshold = 20
+agent_whitelist_mode = false
+agent_whitelist = []
+agent_prompt = ''''''
+
+# Provider configuration. Each named provider can specify:
+#   url     = base URL of the API endpoint
+#   key     = API key
+#   api_type = "chat_completions" (default, broadly compatible) or "responses" (OpenAI Responses API)
+#
+# Example:
+# [agent_providers.default]
+# url = "https://api.openai.com/v1"
+# key = "sk-..."
+# api_type = "chat_completions"
+#
+# [agent_providers.openai_native]
+# url = "https://api.openai.com/v1"
+# key = "sk-..."
+# api_type = "responses"
+
+manyacg_api_url = "https://api.manyacg.top/v1"
+manyacg_api_key = ""
+manyacg_channel = "MoreACG"
+manyacg_bot = "kirakabot"
+manyacg_setu_cd = 1
+manyacg_hybrid_search = true
+
+# Infographic API https://github.com/krau/infographic-api
+# infographic = false
+# infographic_api_url = "http://localhost:3000"
+# infographic_api_key = ""
+
+# Periodic sticker / reaction: force the model to call the tool every N conversations.
+# Set to 0 to disable.
+# agent_periodic_sticker_interval = 5
+# agent_periodic_reaction_interval = 3
+
+# RSS 订阅推送
+# rss_enabled = true
+# 白名单模式: 默认开启, 只有 owner 在面板中放行的 chat 可以订阅
+# rss_whitelist_mode = true
+# 轮询间隔(分钟)
+# rss_interval = 30

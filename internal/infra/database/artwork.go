@@ -1,0 +1,145 @@
+package database
+
+import (
+	"context"
+
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/model/entity"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/shared"
+	"github.com/unvgo/ouid"
+	"gorm.io/gorm"
+)
+
+func (d *DB) CreateArtwork(ctx context.Context, artwork *entity.Artwork) (*ouid.OUID, error) {
+	result := gorm.WithResult()
+	err := gorm.G[entity.Artwork](d.db, result).Create(ctx, artwork)
+	if err != nil {
+		return nil, err
+	}
+	return &artwork.ID, nil
+}
+
+func (d *DB) GetArtworkByID(ctx context.Context, id ouid.OUID) (*entity.Artwork, error) {
+	var artwork entity.Artwork
+	err := d.db.WithContext(ctx).Model(&entity.Artwork{}).
+		Scopes(applyArtworkPreloads()).
+		Where("id = ?", id).
+		First(&artwork).Error
+	if err != nil {
+		return nil, err
+	}
+	return &artwork, nil
+}
+
+func (d *DB) GetArtworksByIDs(ctx context.Context, ids []ouid.OUID) ([]*entity.Artwork, error) {
+	if len(ids) == 0 {
+		return []*entity.Artwork{}, nil
+	}
+	var artworks []*entity.Artwork
+	err := d.db.WithContext(ctx).Model(&entity.Artwork{}).
+		Scopes(applyArtworkPreloads()).
+		Where("id IN ?", ids).
+		Find(&artworks).Error
+	if err != nil {
+		return nil, err
+	}
+	return artworks, nil
+}
+
+func (d *DB) GetArtworkByURL(ctx context.Context, url string) (*entity.Artwork, error) {
+	var artwork entity.Artwork
+	err := d.db.WithContext(ctx).Model(&entity.Artwork{}).
+		Scopes(applyArtworkPreloads()).
+		Where("source_url = ?", url).
+		First(&artwork).Error
+	if err != nil {
+		return nil, err
+	}
+	return &artwork, nil
+}
+
+func (d *DB) DeleteArtworkByID(ctx context.Context, id ouid.OUID) error {
+	n, err := gorm.G[entity.Artwork](d.db).
+		Where("id = ?", id).
+		Delete(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (d *DB) DeleteArtworkByURL(ctx context.Context, url string) error {
+	n, err := gorm.G[entity.Artwork](d.db).
+		Where("source_url = ?", url).
+		Delete(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+// UpdateArtwork updates non-zero fields in the patch.
+func (d *DB) UpdateArtwork(ctx context.Context, patch *entity.Artwork) error {
+	if patch.ID.IsZero() {
+		return gorm.ErrInvalidData
+	}
+	_, err := gorm.G[entity.Artwork](d.db).Where("id = ?", patch.ID).Updates(ctx, *patch)
+	return err
+}
+
+// UpdateArtworkByMap updates all given fields in the patch map.
+func (d *DB) UpdateArtworkByMap(ctx context.Context, id ouid.OUID, patch map[string]any) error {
+	if id.IsZero() {
+		return gorm.ErrInvalidData
+	}
+	if len(patch) == 0 {
+		return nil
+	}
+	return d.db.WithContext(ctx).Model(&entity.Artwork{}).Where("id = ?", id).Updates(patch).Error
+}
+
+func (d *DB) UpdateArtworkPictures(ctx context.Context, id ouid.OUID, pics []*entity.Picture) error {
+	if id.IsZero() {
+		return gorm.ErrInvalidData
+	}
+	if len(pics) == 0 {
+		return gorm.ErrInvalidData
+	}
+	for _, pic := range pics {
+		pic.ArtworkID = id
+	}
+	var existing entity.Artwork
+	if err := d.db.WithContext(ctx).First(&existing, id).Error; err != nil {
+		return err
+	}
+	return d.db.WithContext(ctx).Model(&existing).Association("Pictures").Replace(pics)
+}
+
+func (d *DB) UpdateArtworkTags(ctx context.Context, id ouid.OUID, tags []*entity.Tag) error {
+	if id.IsZero() {
+		return gorm.ErrInvalidData
+	}
+	var existing entity.Artwork
+	if err := d.db.WithContext(ctx).First(&existing, id).Error; err != nil {
+		return err
+	}
+	return d.db.WithContext(ctx).Model(&existing).Association("Tags").Replace(tags)
+}
+
+func (d *DB) CountArtworks(ctx context.Context, r18 shared.R18Type) (int64, error) {
+	var count int64
+	query := d.db.WithContext(ctx).Model(&entity.Artwork{})
+	if r18 != shared.R18TypeAll {
+		query = query.Where("r18 = ?", r18 == shared.R18TypeR18)
+	}
+	err := query.Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}

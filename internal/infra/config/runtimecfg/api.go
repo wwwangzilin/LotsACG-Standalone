@@ -1,0 +1,44 @@
+package runtimecfg
+
+type RestConfig struct {
+	Site             SiteConfig        `toml:"site" mapstructure:"site" json:"site" yaml:"site"`
+	Addr             string            `toml:"addr" mapstructure:"addr" json:"addr" yaml:"addr"`
+	Base             string            `toml:"base" mapstructure:"base" json:"base" yaml:"base"` // https://example.com/some-reserve-path
+	GeoIPDB          string            `toml:"geoip_db" mapstructure:"geoip_db" json:"geoip_db" yaml:"geoip_db"`
+	StoragePathRules []StoragePathRule `toml:"storage_path_rule" mapstructure:"storage_path_rule" json:"storage_path_rule" yaml:"storage_path_rule"`
+	// WebDir 内置 Web 前端 (ManyACG/web 构建产物) 的静态目录, 为空则不托管前端
+	WebDir string `toml:"web_dir" mapstructure:"web_dir" json:"web_dir" yaml:"web_dir"`
+	// PublicURL Web 前端的对外访问地址, 用于启动日志展示; 为空则用 http://<addr>
+	PublicURL string `toml:"public_url" mapstructure:"public_url" json:"public_url" yaml:"public_url"`
+	// rate limit
+	Limit  LimiterConfig   `toml:"limit" mapstructure:"limit" json:"limit" yaml:"limit"`
+	Cache  RestCacheConfig `toml:"cache" mapstructure:"cache" json:"cache" yaml:"cache"`
+	Enable bool            `toml:"enable" mapstructure:"enable" json:"enable" yaml:"enable"`
+}
+
+type RestCacheConfig struct {
+	Disable    bool `toml:"disable" mapstructure:"disable" json:"disable" yaml:"disable"`
+	DefaultTTL int  `toml:"default_ttl" mapstructure:"default_ttl" json:"default_ttl" yaml:"default_ttl"` // seconds
+}
+
+type StoragePathRule struct {
+	MatchPrefix string   `toml:"match_prefix" mapstructure:"match_prefix" json:"match_prefix" yaml:"match_prefix"`
+	StorageType string   `toml:"storage_type" mapstructure:"storage_type" json:"storage_type" yaml:"storage_type"`
+	TrimPrefix  string   `toml:"trim_prefix" mapstructure:"trim_prefix" json:"trim_prefix" yaml:"trim_prefix"`
+	JoinPrefix  []string `toml:"join_prefix" mapstructure:"join_prefix" json:"join_prefix" yaml:"join_prefix"`
+}
+
+type SiteConfig struct {
+	Title string `toml:"title" mapstructure:"title" json:"title" yaml:"title"`
+	Desc  string `toml:"desc" mapstructure:"desc" json:"desc" yaml:"desc"`
+	Name  string `toml:"name" mapstructure:"name" json:"name" yaml:"name"`
+	Email string `toml:"email" mapstructure:"email" json:"email" yaml:"email"`
+	URL   string `toml:"url" mapstructure:"url" json:"url" yaml:"url"`
+}
+
+type LimiterConfig struct {
+	Enable bool `toml:"enable" mapstructure:"enable" json:"enable" yaml:"enable"`
+	// in seconds
+	Expiration int `toml:"expiration" mapstructure:"expiration" json:"expiration" yaml:"expiration"`
+	Max        int `toml:"max" mapstructure:"max" json:"max" yaml:"max"`
+}

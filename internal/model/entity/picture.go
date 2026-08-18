@@ -1,0 +1,74 @@
+package entity
+
+import (
+	"time"
+
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/shared"
+	"github.com/unvgo/ouid"
+	"gorm.io/datatypes"
+	"gorm.io/gorm"
+)
+
+type Picture struct {
+	StorageInfo datatypes.JSONType[shared.StorageInfo] `json:"storage_info"`
+
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+
+	TelegramInfo datatypes.JSONType[shared.TelegramInfo] `json:"telegram_info"`
+	Artwork      *Artwork                                `gorm:"foreignKey:ArtworkID;references:ID;constraint:OnDelete:CASCADE" json:"-"`
+
+	Thumbnail string `gorm:"type:text" json:"thumbnail"`
+	Original  string `gorm:"type:text;index" json:"original"`
+	Phash     string `gorm:"type:text;index" json:"phash"` // phash
+	Orb       string `gorm:"type:text;index" json:"orb"`     // orb features
+	ThumbHash string `gorm:"type:text" json:"thumb_hash"`  // thumbhash
+
+	OrderIndex uint      `gorm:"column:order_index;not null;default:0;index:idx_picture_artwork_index,priority:1" json:"index"`
+	Width      uint      `json:"width"`
+	Height     uint      `json:"height"`
+	ID         ouid.OUID `gorm:"primaryKey;type:uuid" json:"id"`
+	ArtworkID  ouid.OUID `gorm:"type:uuid;index" json:"artwork_id"`
+}
+
+// IsHide implements PictureLike.
+func (p *Picture) IsHide() bool {
+	return false
+}
+
+// GetIndex implements PictureLike.
+func (p *Picture) GetIndex() uint {
+	return p.OrderIndex
+}
+
+// GetOriginal implements PictureLike.
+func (p *Picture) GetOriginal() string {
+	return p.Original
+}
+
+// GetSize implements PictureLike.
+func (p *Picture) GetSize() (width uint, height uint) {
+	return p.Width, p.Height
+}
+
+// GetStorageInfo implements PictureLike.
+func (p *Picture) GetStorageInfo() shared.StorageInfo {
+	return p.StorageInfo.Data()
+}
+
+// GetTelegramInfo implements PictureLike.
+func (p *Picture) GetTelegramInfo() shared.TelegramInfo {
+	return p.TelegramInfo.Data()
+}
+
+// GetThumbnail implements PictureLike.
+func (p *Picture) GetThumbnail() string {
+	return p.Thumbnail
+}
+
+func (p *Picture) BeforeCreate(tx *gorm.DB) (err error) {
+	if p.ID.IsZero() {
+		p.ID = ouid.New()
+	}
+	return
+}

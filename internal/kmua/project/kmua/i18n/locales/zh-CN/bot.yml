@@ -1,0 +1,213 @@
+bot:
+  msg:
+    private_start: |
+      Nya~
+      You can use /lang to change the language of the bot.
+    group_start: |
+      Hi~
+      You can use /lang to change the language of the bot in this group.
+    lang_changed: 语言已更改为 {lang}
+    no_permission_group: 你没有本群组中管理 bot 的权限哦
+    group_config: 点击按钮更改群组设置哦
+    chat_panel: 点击按钮在管理面板中配置本群
+    panel_unavailable: 管理面板未启用哦
+    unknown_operation: 未知操作, 不可以干坏事哦
+    group_config_saved: 群组设置已保存~
+    refresh_failed: 刷新失败, 请稍后再试
+    refresh_success: 刷新成功
+    refreshing_avatar: 正在刷新你的头像...
+    cleanning: kmua 正在打扫房间...
+    sync_members_cd: 不要频繁使用哦, 请稍后再试
+    sync_members_done: 同步完成! 清理了 {count} 个人呢
+    sync_members_error: 失败了喵, 请尝试赋予 bot 管理员权限后再试.
+    sync_members_start: 正在遍历群u名单...
+    b23_converted: "{real_url}"
+    b23_converted_group: |
+      {real_url}
+      来自 {from_user} 发送的 b23 短链, 已经帮你转换了哦
+    title:
+      set_self: 好, 你现在是 {title} 啦
+      set_other: "{user} 把 {target} 变成 {title} !"
+      set_permissions: 点击按钮更改 /t 命令赋予成员的权限
+      deleted: 已删除你的头衔
+      errors:
+        generic: 失败了喵
+        admin_required: 咱没有足够的权限或正在尝试更改其他管理员设置的头衔
+        creator: 咱不能对群主使用喵
+        rank_invalid: 头衔太长了! 进不去!
+        user_id_invalid: 咱不能更改自己的或频道身份的头衔
+        no_chat_or_user: 找不到对应的用户或群组...
+        right_forbidden: | 
+          所应用的权限在此群组中不可用, 请使用 /sett 命令修改
+          (例如, 管理话题的权限仅在开启了话题的群组中可用哦)
+    ip:
+      no_ip_provided: "请提供要查询的 IP/域名"
+      querying: "正在查询: {ip}"
+      query_failed: "查询失败: {error_type}: {error}"
+      query_failed_reason: "查询失败: {message}"
+      query_target: "查询目标: <code>{url}</code>"
+      resolved_address: "解析地址: <code>{query}</code>"
+      location: "地区: <code>{country} - {region} - {city}</code>"
+      coordinates: "经纬度: <code>{lat},{lon}</code>"
+      isp: "ISP: <code>{isp}</code>"
+      organization: "组织: <code>{org}</code>"
+      as_number: '<a href="https://bgp.he.net/{as_link}">{as_number}</a>'
+      mobile_ip: "此 IP 可能为<b>蜂窝移动数据 IP</b>"
+      proxy_ip: "此 IP 可能为<b>代理 IP</b>"
+      hosting_ip: "此 IP 可能为<b>数据中心 IP</b>"
+    help: |
+      <blockquote expandable="true">
+      /start - 开始使用|打开菜单
+      /help - 显示此帮助信息
+      /config - 更改 bot 在群组中的设置
+      /waifu - 今天的群友老婆!
+      /waifu_graph - 老婆关系图!
+      /q - 记录语录
+      /d - 删除语录|管理群语录
+      /qrand - 随机语录
+      /qp - 设置随机主动发送语录的概率
+      /t - 获取头衔|互赠头衔
+      /td - 删除你的头衔
+      /sett - 更改 /t 命令所赋予的权限
+      /setu - 来点色图 (/ω＼*)
+      /greet - 设置群组欢迎语
+      /id - 获取聊天ID
+      /ip - 查询IP/域名信息
+      /wordcloud - 生成聊天记录词云
+      /botpromote - 在群组中设置bot管理员 (对于bot该用户将具有同等于群主的权限)
+      /botdemote - 在群组中取消bot管理员
+      /syncmembers - 同步群组成员
+      /f5avatar - 刷新你的头像
+      /forget - 让 bot 忘记与你的对话记录
+      /throwbottle - 扔一个漂流瓶
+      /pickbottle - 捡一个漂流瓶
+      /buygift - 购买礼物
+      /gift - 送礼物给 Bot
+      /rss - 管理 RSS 订阅
+      </blockquote>
+      对其他人使用 "/" 或 "\" 即可对其施法
+    help_inline: |
+      在任意聊天框中输入 @{me_username} 即可进入 Inline 模式
+
+      Inline 模式下可使用以下参数:
+
+      q [关键词] - 查询语录
+      ms - 某游戏相关meme生成
+    reply:
+      default:
+        - 喵喵?
+    manyacg:
+      artwork_pictures_count: 该作品共有 {count} 张图片
+      seefull: ->点击查看
+      chat_setu_disabled: 这里不允许涩图哦
+      setu_cd: 太快了! 不行!
+      setu_error: 失败了喵, 请稍后再试
+    greeting:
+      usage: |
+        使用方法: /greet <动作> [参数]
+        可用动作: set, remove, show
+        - set <欢迎语>:     
+          设置群组欢迎语, 可以使用以下变量:
+          ${user} - 新群u用户名
+          ${chat} - 群组标题
+          可使用 HTML
+        - remove:
+          移除群组欢迎语
+        - 预览:
+          显示当前群组欢迎语
+      set_usage: |
+        使用方法: /greet set <欢迎语>
+        可用变量:
+        ${user} - 新群u用户名
+        ${chat} - 群组标题
+        可使用 HTML
+      too_long: 太长了! 不行!
+      set_success: 群组欢迎语设置好啦
+      remove_success: 群组欢迎语已移除
+      not_set: 本群还没有设置欢迎语哦
+      template_error: 解析欢迎语模板时发生错误, 请不要插入奇怪的东西
+    botadmin:
+      invalid_user: |
+        无效的用户, 请提供有效的用户 ID, 或回复一条消息
+        (不能将频道身份, 匿名管理等设置为 bot 管理员, 该命令也不能对自己使用哦)
+      user_not_found: 找不到该用户
+      user_is_bot: 不能对 Bot 使用此命令哦
+      user_not_in_chat: 该用户似乎不在群组里, 让 ta 出来发个言吧~
+      success: 已将 {user} 在本群的 Bot 管理权限设为 {status}
+      target_is_upstream: 你不能对该用户使用此命令, 因为你的权限由该用户授予
+      already_set: 用户状态未更改
+    agent:
+      waiting: 正在等待响应, 请稍等一会儿...
+      need_join_channel: 要先加入 {channel} 才能和我聊天哦~
+      forgot: 刚刚发生了什么, 好像忘记了呢...
+      summary_prompt: 总结对话内容
+      errors:
+        model_http_400: 太涩了, 不行! (400)
+        model_http: 失败了喵, 请稍后再试 (HTTP {code})
+        too_fast: 太快了! 不行!
+        interrupted: "*输出被中断了喵 ({error})"
+    wordcloud:
+      generating: 已经正在生成啦, 请稍等一会儿...
+      generated: 最近聊天记录的词云图
+    randmyavatar:
+      service_unavailable: manyacg 或 aniobjcut 服务未启用
+      processing: 正在更换头像...
+      fetch_failed: 获取图片失败, 请稍后再试
+      success: "头像更换成功!\n作品: <a href='{url}'>{title}</a>"
+      failed: "更换头像失败: {error}"
+    infographic:
+      usage: |
+        使用方法: /infographic <信息图语法>
+        或回复一条消息使用 /infographic
+        
+        示例:
+        <code>/infographic infographic list-row-simple-horizontal-arrow\ndata\n  title Product Roadmap\n  lists\n    - label Research\n      value 80</code>
+      cooldown: 太快了! 请稍后再试
+      rendered: "渲染完成! 耗时: {time}ms"
+      timeout: 渲染超时, 请稍后再试
+      error: "渲染失败: {error}"
+    rss:
+      usage: |
+        <code>/rss sub &lt;url&gt;</code> 订阅一个 RSS/Atom feed
+        <code>/rss list</code> 查看当前订阅
+        <code>/rss unsub &lt;序号&gt;</code> 取消订阅
+        <code>/rss pause &lt;序号&gt;</code> 暂停推送
+        <code>/rss resume &lt;序号&gt;</code> 恢复推送
+        <code>/rss interval &lt;序号&gt; &lt;分钟&gt;</code> 设置抓取间隔, 留空恢复全局
+        <code>/rss testpush &lt;序号&gt;</code> 立即推送一次该订阅 (测试用)
+        <code>/rss digest on|off</code> 开启/关闭 RSS 推送 AI 摘要
+        <code>/rss broadcast on|off</code> 开启/关闭 RSS AI 播报
+      disabled: RSS 订阅功能未启用
+      not_allowed: "RSS 订阅未对此聊天开放"
+      invalid_url: URL 无效, 必须以 http:// 或 https:// 开头
+      fetch_failed: "无法获取该 feed: {error}"
+      added: "已添加订阅: {title}"
+      already_subscribed: 该 feed 已在订阅列表中
+      limit_reached: "订阅数量已达上限 ({limit})"
+      empty: "还没有订阅, 试试 /rss sub <feed URL>"
+      removed: "已取消订阅: {title}"
+      paused: "已暂停: {title}"
+      resumed: "已恢复: {title}"
+      open_panel: 打开面板
+      invalid_index: 序号无效
+      interval_set: "已设置抓取间隔为 {minutes} 分钟"
+      interval_reset: 已恢复为全局抓取间隔
+      interval_invalid: "间隔必须是 {min}-{max} 之间的分钟数"
+      too_many_requests: "操作太频繁, 请稍后再试 ({error})"
+      testpush_done: "已推送 {count} 条消息"
+      digest_on: 已开启 RSS 推送 AI 摘要
+      digest_off: 已关闭 RSS 推送 AI 摘要
+      broadcast_on: 已开启 RSS AI 播报
+      broadcast_off: 已关闭 RSS AI 播报
+      toggle_failed: 该聊天的配置暂不可用, 无法保存此开关
+      interval_mark: " · 每 {minutes} 分钟"
+      paused_mark: " (已暂停)"
+      error_mark: " (推送错误)"
+      untitled: 无标题
+    wechat:
+      read_original: 阅读原文
+    link_parse:
+      view_original: 查看原文
+    twitter:
+      view_original: 查看原推
+

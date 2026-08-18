@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - Pixiv-XP-Pusher{% endblock %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 5rem auto;">
+    <div class="card">
+        <h1 style="text-align: center; margin-bottom: 0.5rem; color: var(--accent);">🎨 Pixiv-XP-Pusher</h1>
+        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">请输入密码登录管理面板</p>
+
+        <form method="post" action="/login">
+            <input type="password" name="password" placeholder="密码" required style="width: 100%; margin-bottom: 1rem;">
+            <button type="submit" class="btn" style="width: 100%;">登录</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

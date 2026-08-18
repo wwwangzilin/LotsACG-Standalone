@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Gallery - Pixiv-XP-Pusher{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">🖼️ 推送历史画廊</h2>
+        <span style="color: var(--text-secondary);">共 {{ total }} 张作品</span>
+    </div>
+
+    {% if items %}
+    <div class="gallery-grid">
+        {% for item in items %}
+        <div class="gallery-item">
+            <img src="/api/proxy/image/{{ item.illust_id }}" alt="Illust {{ item.illust_id }}" loading="lazy"
+                style="background: #2a2a3e;">
+            <div class="overlay">
+                <a href="https://www.pixiv.net/artworks/{{ item.illust_id }}" target="_blank">
+                    #{{ item.illust_id }}
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 分页 -->
+    {% if total > limit %}
+    <div style="margin-top: 1.5rem; text-align: center;">
+        {% if page > 1 %}
+        <a href="/gallery?page={{ page - 1 }}" class="btn" style="margin-right: 0.5rem;">上一页</a>
+        {% endif %}
+        <span style="color: var(--text-secondary);">第 {{ page }} / {{ (total // limit) + 1 }} 页</span>
+        {% if page * limit < total %} <a href="/gallery?page={{ page + 1 }}" class="btn" style="margin-left: 0.5rem;">
+            下一页</a>
+            {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+        暂无推送记录。发送 <code>/push</code> 开始您的第一次推送吧！
+    </p>
+    {% endif %}
+</div>
+{% endblock %}
