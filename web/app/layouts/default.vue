@@ -134,6 +134,11 @@ const menuItems = computed(() => [
     to: '/random'
   },
   {
+    iconName: 'i-mdi:heart-outline',
+    text: '我的收藏',
+    to: '/favorites'
+  },
+  {
     iconName: 'i-mdi:link-variant',
     text: '友情链接',
     to: '/link'

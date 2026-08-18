@@ -60,6 +60,10 @@
               <var-button size="large" title="相关推荐" text-color="#39c5bb" @click="searchSimilar">
                 <var-icon name="camera-outline" />
               </var-button>
+              <var-button size="large" :text-color="isFavorited ? '#f44336' : '#39c5bb'" @click="toggleFavorite"
+                :title="isFavorited ? '取消收藏' : '收藏'">
+                <var-icon :name="isFavorited ? 'heart' : 'heart-outline'" />
+              </var-button>
             </div>
           </div>
         </div>
@@ -90,6 +94,7 @@ import type { Artwork, ArtworkDetailResponse, Picture } from '~/types/artwork'
 
 const route = useRoute()
 const artworkStore = useArtworkStore()
+const favoritesStore = useFavoritesStore()
 const artworkId = route.params.id as string
 
 const BACKGROUND_DELAY = 1000
@@ -100,6 +105,14 @@ const artwork = ref<Artwork | null>(artworkStore.getArtwork(artworkId))
 const downloadAvailable = ref(false)
 const loading = ref(true)
 const downloadedCount = ref(0)
+const isFavorited = computed(() => favoritesStore.isFavorite(artworkId))
+
+// 收藏/取消收藏
+const toggleFavorite = () => {
+  if (!artwork.value) return
+  const added = favoritesStore.toggle(artwork.value)
+  showSnackbar(added ? '已收藏 ♥' : '已取消收藏', 'success')
+}
 
 const pictureRegularUrls = computed(() => artwork.value?.pictures.map((p) => p.regular) || [])
 const downloadProgress = computed(() => {
