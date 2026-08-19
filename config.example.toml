@@ -128,7 +128,7 @@ chat_id = -1003333333333              # 私有存储频道
 # ────────────────────────── 数据源 ──────────────────────────
 [source.pixiv]
 img_proxy = "pximg.manyacg.top"       # 主图片代理
-img_proxies = ["pixiv.cat", "i.muxmus.com"]  # 备用代理, 按顺序降级
+img_proxies = ["i.pixiv.re", "i.muxmus.com"]  # 备用代理, 按顺序降级 (pixiv.cat 已失效, 2026-08 实测)
 
 # 单账号 (兼容旧写法)
 [[source.pixiv.cookies]]
