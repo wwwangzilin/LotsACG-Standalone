@@ -7,6 +7,7 @@
 bot_token = "123456:ABCDEF"           # @BotFather 创建的 bot token
 # api_url = ""                        # 可选: 自定义 Telegram API 地址 (反代/本地 bot api)
 # api_url = "https://your-name.workers.dev"  # 免梯子: 自建 Cloudflare Worker 代理 (见 docs/no-vpn-deploy.md)
+# proxy = "http://127.0.0.1:26561"          # 可选: Telegram API 走本地代理 (仅 Telegram, 不影响图源)
 username = "@lotsacg_bot"             # bot 用户名 (含 @)
 admins = [123456789]                  # 管理员 Telegram ID (sudo 权限)
 # allowed_users = [123456789]         # 可选: 用户白名单, 未登记用户只能 /start /help /files
@@ -167,6 +168,7 @@ disable = false
 
 [source]
 proxy = ""                            # 可选: 全局代理 (http://user:pass@host:port), 如 http://127.0.0.1:7899
+# 提示: 若 Telegram API 需代理而图源不需要, 在 [telegram] 段单独配 proxy; 本段代理同时用于 Telegram 与 pixiv 下载
 
 # ────────────────────────── AI 打标 (可选) ──────────────────────────
 [tagging]

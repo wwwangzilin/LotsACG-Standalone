@@ -68,6 +68,16 @@ func Init(ctx context.Context, serv *service.Service, cfg runtimecfg.TelegramCon
 	log.Info("Initing telegram client")
 	var err error
 	apiUrl := cfg.APIURL
+
+	// 代理支持：优先用 telegram.proxy，其次 source.proxy（与 pixiv 下载共用）
+	proxyAddr := cfg.Proxy
+	if proxyAddr == "" {
+		proxyAddr = runtimecfg.Get().Source.Proxy
+	}
+	if proxyAddr != "" {
+		log.Infof("telegram api using proxy: %s", proxyAddr)
+	}
+
 	bot, err := telego.NewBot(
 		cfg.BotToken,
 		telego.WithLogger(log.New(log.Config{
@@ -78,7 +88,7 @@ func Init(ctx context.Context, serv *service.Service, cfg runtimecfg.TelegramCon
 		telego.WithAPIServer(apiUrl),
 		telego.WithRequestConstructor(telegoapiwrapper.MultipartRequestConstructor{}),
 		telego.WithAPICaller(&telegoapiwrapper.RetryRateLimitCaller{
-			Caller:       telegoapi.DefaultFastHTTPCaller,
+			Caller:       telegoapiwrapper.NewFastHTTPCaller(proxyAddr),
 			MaxAttempts:  cfg.Retry.MaxAttempts,
 			ExponentBase: cfg.Retry.ExponentBase,
 			StartDelay:   time.Duration(cfg.Retry.StartDelay) * time.Second,

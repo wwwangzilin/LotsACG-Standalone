@@ -37,12 +37,14 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/studio-b12/gowebdav v0.12.0
 	github.com/unvgo/ouid v1.0.0
+	github.com/valyala/fasthttp v1.70.0
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 	github.com/yapingcat/gomedia v0.0.0-20240906162731-17feea57090c
 	github.com/zeebo/blake3 v0.2.4
 	go.etcd.io/bbolt v1.4.3
 	go.uber.org/zap v1.27.1
 	golang.org/x/image v0.39.0
+	golang.org/x/net v0.53.0
 	golang.org/x/sync v0.20.0
 	golang.org/x/text v0.36.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -126,7 +128,6 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasthttp v1.70.0 // indirect
 	github.com/valyala/fastjson v1.6.10 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
@@ -137,7 +138,6 @@ require (
 	golang.org/x/arch v0.25.0 // indirect
 	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/exp v0.0.0-20260209203927-2842357ff358 // indirect
-	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	google.golang.org/protobuf v1.36.7 // indirect
