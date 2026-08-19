@@ -487,3 +487,13 @@ dsn = "file:lotsacg_migrate.db"
 感谢你的支持！❤️
 
 </div>
+
+---
+
+## 🌐 免梯子部署（Telegram 受限地区）
+
+Telegram API 被封锁的地区可通过自建 Cloudflare Worker 反向代理访问，无需梯子。
+详见 [docs/no-vpn-deploy.md](docs/no-vpn-deploy.md)，只需两步：
+
+1. 部署 Worker 获得 `https://your-name.workers.dev`
+2. `config.toml` 里填 `[telegram] api_url = "https://your-name.workers.dev"`
