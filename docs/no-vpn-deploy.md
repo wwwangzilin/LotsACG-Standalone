@@ -86,3 +86,14 @@ api_url = "https://<你的子域名>.workers.dev"
 - **数据安全**：请求会经过你的 Worker 转发，建议只在自己的 Worker 上运行，不要使用第三方公开代理
 - **与 `[source] proxy` 的区别**：`[telegram] api_url` 只影响 Telegram API 访问；抓取图源（pixiv 等）的代理由 `[source] proxy` 控制，两者独立
 - **国内访问 Cloudflare**：`*.workers.dev` 在国内偶尔不稳定，若遇到问题可绑定自定义域名（CF 域名在国内也需可达性测试）
+
+## 仓库自带模板（推荐）
+
+本仓库提供开箱即用的 Worker 模板：[deploy/telegram-proxy-worker.js](../deploy/telegram-proxy-worker.js)
+
+1. Cloudflare Dashboard → Workers → **Create Worker**
+2. 点 **Edit Code**，删除默认内容，粘贴 `telegram-proxy-worker.js` 的全部代码
+3. **Save and Deploy**
+4. 得到地址 `https://<your-name>.workers.dev`，填入 `[telegram] api_url`
+
+模板特性：仅代理 `/bot<token>/<method>` 路径，完整透传请求体（支持 sendPhoto 等上传），原样返回 Telegram 响应。
