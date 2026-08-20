@@ -181,6 +181,12 @@ func (r *Runtime) Start(ctx context.Context, stop func()) error {
 					return
 				}
 				log.Info("XP-Pusher auto-started", "pid", pid, "log", mgr.LogPath())
+				// 看门狗: 监控进程存活, 异常退出自动重启
+				if xppusher.WatchdogEnabled(r.cfg.XPPusher) {
+					wd := xppusher.NewWatchdog(mgr, time.Duration(r.cfg.XPPusher.WatchdogInterval)*time.Second, r.cfg.XPPusher.MaxRestarts)
+					wd.MarkStarted(pid)
+					go wd.Run(ctx)
+				}
 			}()
 		}
 	}
@@ -199,6 +205,12 @@ func (r *Runtime) Start(ctx context.Context, stop func()) error {
 					return
 				}
 				log.Info("kmua-bot auto-started", "pid", pid, "log", mgr.LogPath())
+				// kmua 看门狗 (复用 xppusher.Watchdog, 接口驱动)
+				if kmuaWatchdogEnabled(r.cfg.KMua) {
+					wd := xppusher.NewWatchdog(mgr, time.Duration(r.cfg.KMua.WatchdogInterval)*time.Second, r.cfg.KMua.MaxRestarts)
+					wd.MarkStarted(pid)
+					go wd.Run(ctx)
+				}
 			}()
 		}
 	}
@@ -257,4 +269,9 @@ func Run(ctx context.Context, cfg runtimecfg.Config, stop func()) error {
 	cleanCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return runtime.Cleanup(cleanCtx)
+}
+
+// kmuaWatchdogEnabled kmua-bot 看门狗开关 (默认启用)。
+func kmuaWatchdogEnabled(cfg runtimecfg.KMuaConfig) bool {
+	return true
 }

@@ -31,4 +31,8 @@ type KMuaConfig struct {
 	WebappShortName string `toml:"webapp_short_name" mapstructure:"webapp_short_name" json:"webapp_short_name" yaml:"webapp_short_name"`
 	// Settings 初始 settings.toml 来源文件 (外部已有配置); 为空时用内嵌模板 + 上面字段生成
 	Settings string `toml:"settings" mapstructure:"settings" json:"settings" yaml:"settings"`
+	// WatchdogInterval 看门狗检查间隔秒数 (0=默认 30s), 进程异常退出自动重启
+	WatchdogInterval uint `toml:"watchdog_interval" mapstructure:"watchdog_interval" json:"watchdog_interval" yaml:"watchdog_interval"`
+	// MaxRestarts 连续自动重启次数上限 (0=默认 5)
+	MaxRestarts int `toml:"max_restarts" mapstructure:"max_restarts" json:"max_restarts" yaml:"max_restarts"`
 }

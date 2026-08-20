@@ -15,4 +15,10 @@ type XPPusherConfig struct {
 	Config string `toml:"config" mapstructure:"config" json:"config" yaml:"config"`
 	// AutoStart exe 启动时是否自动拉起 XP-Pusher
 	AutoStart bool `toml:"auto_start" mapstructure:"auto_start" json:"auto_start" yaml:"auto_start"`
+	// WatchdogEnable 子进程看门狗: 定期检查进程存活, 异常退出自动重启 (默认 true)
+	WatchdogEnable *bool `toml:"watchdog_enable" mapstructure:"watchdog_enable" json:"watchdog_enable" yaml:"watchdog_enable"`
+	// WatchdogInterval 健康检查间隔秒数 (0=默认 30s)
+	WatchdogInterval uint `toml:"watchdog_interval" mapstructure:"watchdog_interval" json:"watchdog_interval" yaml:"watchdog_interval"`
+	// MaxRestarts 连续自动重启次数上限 (超过后停止尝试并告警, 0=默认 5)
+	MaxRestarts int `toml:"max_restarts" mapstructure:"max_restarts" json:"max_restarts" yaml:"max_restarts"`
 }
