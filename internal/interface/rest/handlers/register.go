@@ -52,6 +52,11 @@ func Register(router fiber.Router, serv *service.Service, cfg runtimecfg.RestCon
 	tagGroup := router.Group("/tag")
 	tagGroup.Get("/random", HandleGetRandomTags)
 
+	// 混合搜索: 文本 / 以图搜文 统一入口
+	searchGroup := router.Group("/search")
+	searchGroup.Get("/hybrid", HandleHybridSearch(serv))
+	searchGroup.Post("/hybrid", HandleHybridSearch(serv))
+
 	tgbotGroup := router.Group("/bot")
 	tgbotGroup.Get("/status", HandleBotStatus)
 	tgbotGroup.Get("/send_artwork_info", HandleSendArtworkInfoByTelegramBot)
