@@ -50,6 +50,12 @@ type KVDBConfig struct {
 	TTLBatchLimit  int         `toml:"ttl_batch_limit" mapstructure:"ttl_batch_limit" json:"ttl_batch_limit" yaml:"ttl_batch_limit"`
 	TTLSweepPeriod uint        `toml:"ttl_sweep_period" mapstructure:"ttl_sweep_period" json:"ttl_sweep_period" yaml:"ttl_sweep_period"` // in seconds
 
+	// BackupDir kvdb 备份目录, 为空则不自动备份 (如 "data/kvdb-backup")
+	BackupDir string `toml:"backup_dir" mapstructure:"backup_dir" json:"backup_dir" yaml:"backup_dir"`
+	// BackupInterval 备份间隔秒数, 0 表示用默认 24h
+	BackupInterval uint `toml:"backup_interval" mapstructure:"backup_interval" json:"backup_interval" yaml:"backup_interval"`
+	// BackupKeep 保留的备份份数, 0 表示默认保留 7 份
+	BackupKeep int `toml:"backup_keep" mapstructure:"backup_keep" json:"backup_keep" yaml:"backup_keep"`
 }
 
 type RedisConfig struct {

@@ -59,6 +59,7 @@ func Init(cfg runtimecfg.KVDBConfig) {
 			}
 			defaultDb = bbdb
 			bbdb.startTTLReaper()
+			startKVBoltBackup(bbdb, cfg)
 		})
 	case "redis":
 		initOnce.Do(func() {
@@ -108,9 +109,26 @@ func Init(cfg runtimecfg.KVDBConfig) {
 			}
 			defaultDb = bbdb
 			bbdb.startTTLReaper()
+			startKVBoltBackup(bbdb, cfg)
 		})
 	}
 
+}
+
+// startKVBoltBackup 根据配置启动 bbolt 定期备份。
+func startKVBoltBackup(bbdb *bboltDB, cfg runtimecfg.KVDBConfig) {
+	if cfg.BackupDir == "" {
+		return
+	}
+	interval := time.Duration(cfg.BackupInterval) * time.Second
+	if cfg.BackupInterval == 0 {
+		interval = 24 * time.Hour
+	}
+	keep := cfg.BackupKeep
+	if keep == 0 {
+		keep = 7
+	}
+	bbdb.startBackup(cfg.BackupDir, interval, keep)
 }
 
 func Close() error {

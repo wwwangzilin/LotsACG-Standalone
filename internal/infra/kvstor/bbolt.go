@@ -3,10 +3,15 @@ package kvstor
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/vmihailenco/msgpack/v5"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/shared/errs"
+	"github.com/wwwangzilin/LotsACG-Standalone/pkg/log"
 	"go.etcd.io/bbolt"
 )
 
@@ -211,4 +216,67 @@ func (b *bboltDB) encodeTTLKey(expiresAt int64, key string) []byte {
 	binary.BigEndian.PutUint64(buf[:8], uint64(expiresAt))
 	copy(buf[8:], key)
 	return buf
+}
+
+// BackupTo 将数据库一致性快照写入 dst 文件 (bbolt 在线备份, 无需停机)。
+// 使用 db.View + tx.WriteTo, 保证备份时数据一致。
+func (b *bboltDB) BackupTo(dst string) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	// 先写临时文件再原子改名, 避免备份中断产生半成品
+	tmp := dst + ".tmp"
+	out, err := os.Create(tmp)
+	if err != nil {
+		return err
+	}
+	backupErr := b.db.View(func(tx *bbolt.Tx) error {
+		_, err := tx.WriteTo(out)
+		return err
+	})
+	closeErr := out.Close()
+	if backupErr != nil {
+		_ = os.Remove(tmp)
+		return backupErr
+	}
+	if closeErr != nil {
+		_ = os.Remove(tmp)
+		return closeErr
+	}
+	return os.Rename(tmp, dst)
+}
+
+// startBackup 定期将数据库备份到 backupDir (保留最近 N 份)。
+func (b *bboltDB) startBackup(backupDir string, interval time.Duration, keep int) {
+	if backupDir == "" || interval <= 0 {
+		return
+	}
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				name := fmt.Sprintf("kvdb-%s.bbolt", time.Now().Format("20060102-150405"))
+				dst := filepath.Join(backupDir, name)
+				if err := b.BackupTo(dst); err != nil {
+					log.Warn("kvdb backup failed", "err", err)
+					continue
+				}
+				log.Info("kvdb backup created", "file", dst)
+				// 清理旧备份, 只保留最近 keep 份
+				if keep > 0 {
+					entries, _ := filepath.Glob(filepath.Join(backupDir, "kvdb-*.bbolt"))
+					if len(entries) > keep {
+						slices.Sort(entries) // 文件名含时间戳, 字典序=时间序
+						for _, old := range entries[:len(entries)-keep] {
+							_ = os.Remove(old)
+						}
+					}
+				}
+			case <-b.stop:
+				return
+			}
+		}
+	}()
 }

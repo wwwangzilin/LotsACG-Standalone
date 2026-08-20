@@ -47,6 +47,9 @@ dsn = "lotsacg.db"
 [kvdb]
 type = "bbolt"                        # bbolt / redis
 path = "data/kvdb.bbolt"
+# backup_dir = "data/kvdb-backup"    # 可选: bbolt 定期备份目录 (默认每 24h, 保留 7 份)
+# backup_interval = 86400            # 备份间隔秒数 (0=默认 24h)
+# backup_keep = 7                    # 保留备份份数 (0=默认 7)
 
 # ────────────────────────── 搜索 / 查重 ──────────────────────────
 [search]
