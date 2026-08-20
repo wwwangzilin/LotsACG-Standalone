@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -146,7 +147,34 @@ func New(ctx context.Context, serv *service.Service, cfg runtimecfg.RestConfig, 
 }
 
 func (r *RestApp) Run(stopCtx context.Context) error {
-	return r.fiberApp.Listen(r.cfg.Addr, fiber.ListenConfig{
+	err := r.fiberApp.Listen(r.cfg.Addr, fiber.ListenConfig{
 		GracefulContext: stopCtx,
 	})
+	if err != nil {
+		// 端口冲突/占用时给出可操作的排查提示, 而不是裸抛底层 bind 错误
+		if isAddrInUse(err) {
+			return fmt.Errorf("%w (端口 %s 已被占用: 请修改 config.toml 中 [rest] addr, 或用 netstat -ano | findstr %s 查找占用进程并结束, Windows 也可用 taskkill /PID <pid> /F)", err, r.cfg.Addr, addrPort(r.cfg.Addr))
+		}
+		return err
+	}
+	return nil
+}
+
+// isAddrInUse 判断错误是否为端口占用 (跨平台: Windows / Linux / macOS)。
+func isAddrInUse(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "address already in use") ||
+		strings.Contains(msg, "only one usage of each socket address") ||
+		strings.Contains(msg, "bind: address already in use")
+}
+
+// addrPort 从 ":8080" / "127.0.0.1:8080" 提取端口号, 用于排查提示。
+func addrPort(addr string) string {
+	if i := strings.LastIndex(addr, ":"); i >= 0 {
+		return addr[i+1:]
+	}
+	return addr
 }

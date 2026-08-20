@@ -206,5 +206,33 @@ func loadConfig() Config {
 		fmt.Printf("error when unmarshal config: %s\n", err)
 		os.Exit(1)
 	}
+	validateConfig(&c)
 	return c
+}
+
+// validateConfig 启动前对必需配置做预检, 缺项/明显错误时给出明确报错与修复指引。
+func validateConfig(c *Config) {
+	// Telegram 必需: bot_token (bot 不启用时不强制)
+	if !c.Telegram.Disable {
+		if strings.TrimSpace(c.Telegram.BotToken) == "" {
+			fmt.Println("config error: [telegram] bot_token 不能为空 (在 BotFather 创建 bot 后获得)")
+			fmt.Println("修复: 在 config.toml 的 [telegram] 段填写 bot_token = \"123456:ABCDEF\"")
+			os.Exit(1)
+		}
+		if strings.TrimSpace(c.Telegram.Username) == "" && c.Telegram.ChatID == 0 {
+			fmt.Println("config error: [telegram] 需要配置 username (含 @) 或 chat_id 之一")
+			fmt.Println("修复: 在 config.toml 填写 username = \"@your_bot\" 或 chat_id = -100xxxxxxxxxx")
+			os.Exit(1)
+		}
+	}
+	// REST 地址格式检查
+	if c.Rest.Enable && !strings.HasPrefix(c.Rest.Addr, ":") && !strings.Contains(c.Rest.Addr, ":") {
+		fmt.Printf("config warning: [rest] addr = %q 缺少端口, 建议改为 :8080 形式\n", c.Rest.Addr)
+	}
+	// 存储配置: telegram 存储需要 token
+	if c.Storage.OriginalType == "telegram" && strings.TrimSpace(c.Storage.Telegram.Token) == "" {
+		fmt.Println("config error: [storage] original_type = \"telegram\" 但 [storage.telegram] token 为空")
+		fmt.Println("修复: 填写用于存储原图的 bot token 与 chat_id")
+		os.Exit(1)
+	}
 }

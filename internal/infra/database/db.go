@@ -2,6 +2,9 @@ package database
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/config/runtimecfg"
@@ -60,6 +63,14 @@ func initDB(ctx context.Context, okCh chan struct{}) {
 	}
 	switch dbType {
 	case "sqlite", "sqlite3":
+		// SQLite dsn 是文件路径: 自动创建父目录, 避免全新环境下 data 目录不存在导致启动失败
+		if dsn != ":memory:" && !strings.Contains(dsn, "://") {
+			if dir := filepath.Dir(dsn); dir != "" && dir != "." {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					log.Fatal("failed to create database directory", "dir", dir, "err", err)
+				}
+			}
+		}
 		db, err = gorm.Open(gormlite.Open(dsn), gcfg)
 	case "pgsql", "postgres", "postgresql":
 		db, err = gorm.Open(postgres.Open(dsn), gcfg)

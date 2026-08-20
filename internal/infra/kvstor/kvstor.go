@@ -3,6 +3,8 @@ package kvstor
 import (
 	"context"
 	"crypto/tls"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -27,12 +29,22 @@ var (
 	reaperStop chan struct{}
 )
 
+// openBolt 打开 bbolt 数据库，自动创建父目录（解决全新环境下 data 目录不存在导致启动失败）。
+func openBolt(dbPath string) (*bbolt.DB, error) {
+	if dir := filepath.Dir(dbPath); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return nil, err
+		}
+	}
+	return bbolt.Open(dbPath, 0600, nil)
+}
+
 func Init(cfg runtimecfg.KVDBConfig) {
 	switch cfg.Type {
 	case "bbolt":
 		dbPath := cfg.Path
 		initOnce.Do(func() {
-			bdb, err := bbolt.Open(dbPath, 0600, nil)
+			bdb, err := openBolt(dbPath)
 			if err != nil {
 				log.Fatal("Failed to initialize kvdb", "err", err)
 			}
@@ -81,7 +93,7 @@ func Init(cfg runtimecfg.KVDBConfig) {
 	default:
 		dbPath := cfg.Path
 		initOnce.Do(func() {
-			bdb, err := bbolt.Open(dbPath, 0600, nil)
+			bdb, err := openBolt(dbPath)
 			if err != nil {
 				log.Fatal("Failed to initialize kvdb", "err", err)
 			}
