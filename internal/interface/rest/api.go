@@ -97,9 +97,26 @@ func New(ctx context.Context, serv *service.Service, cfg runtimecfg.RestConfig, 
 	app.Use(compress.New())
 	app.Use(recoverer.New())
 
+	// 安全中间件: API token 鉴权 + 敏感操作审计
+	app.Use(authMiddleware(cfg))
+	app.Use(auditSensitive())
+
 	loggerCfg := logger.ConfigDefault
 	loggerCfg.Format = "${time} | ${status} | ${latency} | ${ip} | ${method} | ${path} | ${queryParams} | ${error}\n"
 	app.Use(logger.New(loggerCfg))
+
+	// 健康检查端点 (无需鉴权, 供监控探针使用)
+	app.Get("/healthz", func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "ok"})
+	})
+	app.Get("/readyz", func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "ready"})
+	})
+
+	// 0.0.0.0 / 公网地址监听的安全告警
+	if strings.Contains(cfg.Addr, "0.0.0.0") || strings.Contains(cfg.Addr, "::") {
+		log.Warn("REST API 监听在 " + cfg.Addr + " (公网可访问)! 强烈建议配置 [rest] api_token 防止未授权访问, 或将 addr 改为 127.0.0.1:8080")
+	}
 
 	v1group := app.Group("/api/v1")
 	handlers.Register(v1group, serv, cfg)

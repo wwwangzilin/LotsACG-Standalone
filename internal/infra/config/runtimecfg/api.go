@@ -14,6 +14,9 @@ type RestConfig struct {
 	Limit  LimiterConfig   `toml:"limit" mapstructure:"limit" json:"limit" yaml:"limit"`
 	Cache  RestCacheConfig `toml:"cache" mapstructure:"cache" json:"cache" yaml:"cache"`
 	Enable bool            `toml:"enable" mapstructure:"enable" json:"enable" yaml:"enable"`
+	// APIToken API 访问鉴权 token: 非空时, 写操作 (POST/PUT/DELETE) 必须携带
+	// Authorization: Bearer <token> 或 X-API-Token: <token>; 只读接口可选。
+	APIToken string `toml:"api_token" mapstructure:"api_token" json:"api_token" yaml:"api_token"`
 }
 
 type RestCacheConfig struct {

@@ -182,7 +182,8 @@ tagnew = false
 
 # ────────────────────────── Web / REST ──────────────────────────
 [rest]
-enable = true                         # 是否启用 Web 网站/API
+enable = true
+# api_token = "your-secret-token"   # API 鉴权: 非空时写操作必须携带 Authorization: Bearer <token> 或 X-API-Token                         # 是否启用 Web 网站/API
 addr = ":8080"
 web_dir = "web-dist"                  # 内置 Web 前端静态目录, 为空则不托管前端
 # base: 图片访问基地址。配置后 API 返回本地 /api/v1/picture/file/... 代理地址
