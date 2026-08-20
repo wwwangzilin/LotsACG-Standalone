@@ -11,6 +11,7 @@ type SourceConfig struct {
 	Kemono   SourceKemonoConfig   `toml:"kemono" mapstructure:"kemono" json:"kemono" yaml:"kemono"`
 	Yandere  SourceYandereConfig  `toml:"yandere" mapstructure:"yandere" json:"yandere" yaml:"yandere"`
 	Nhentai  SourceNhentaiConfig  `toml:"nhentai" mapstructure:"nhentai" json:"nhentai" yaml:"nhentai"`
+	Misskey  SourceMisskeyConfig  `toml:"misskey" mapstructure:"misskey" json:"misskey" yaml:"misskey"`
 }
 
 type SourcePixivConfig struct {
@@ -73,4 +74,16 @@ type SourceYandereConfig struct {
 
 type SourceNhentaiConfig struct {
 	Disable bool `toml:"disable" mapstructure:"disable" json:"disable" yaml:"disable"`
+}
+
+// SourceMisskeyConfig 配置 Misskey (联邦宇宙) 数据源。
+type SourceMisskeyConfig struct {
+	// Disable 是否禁用该源
+	Disable bool `toml:"disable" mapstructure:"disable" json:"disable" yaml:"disable"`
+	// Instance Misskey 实例地址, 如 "https://misskey.io" 或 "https://mk.example.com"
+	Instance string `toml:"instance" mapstructure:"instance" json:"instance" yaml:"instance"`
+	// UserID 关注的用户 ID (可选), 为空时拉取全局时间线; 可填 "userID1,userID2" 多个
+	UserID string `toml:"user_id" mapstructure:"user_id" json:"user_id" yaml:"user_id"`
+	// Limit 每次拉取数量上限 (0=默认 20)
+	Limit int `toml:"limit" mapstructure:"limit" json:"limit" yaml:"limit"`
 }

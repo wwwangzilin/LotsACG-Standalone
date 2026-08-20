@@ -12,6 +12,7 @@ danbooru
 kemono
 yandere
 nhentai
+misskey
 )
 */
 type SourceType string

@@ -25,6 +25,8 @@ const (
 	SourceTypeYandere SourceType = "yandere"
 	// SourceTypeNhentai is a SourceType of type nhentai.
 	SourceTypeNhentai SourceType = "nhentai"
+	// SourceTypeMisskey is a SourceType of type misskey.
+	SourceTypeMisskey SourceType = "misskey"
 )
 
 var ErrInvalidSourceType = fmt.Errorf("not a valid SourceType, try [%s]", strings.Join(_SourceTypeNames, ", "))
@@ -37,6 +39,7 @@ var _SourceTypeNames = []string{
 	string(SourceTypeKemono),
 	string(SourceTypeYandere),
 	string(SourceTypeNhentai),
+	string(SourceTypeMisskey),
 }
 
 // SourceTypeNames returns a list of possible string values of SourceType.
@@ -56,6 +59,7 @@ func SourceTypeValues() []SourceType {
 		SourceTypeKemono,
 		SourceTypeYandere,
 		SourceTypeNhentai,
+		SourceTypeMisskey,
 	}
 }
 
@@ -79,6 +83,7 @@ var _SourceTypeValue = map[string]SourceType{
 	"kemono":   SourceTypeKemono,
 	"yandere":  SourceTypeYandere,
 	"nhentai":  SourceTypeNhentai,
+	"misskey":  SourceTypeMisskey,
 }
 
 // ParseSourceType attempts to convert a string to a SourceType.

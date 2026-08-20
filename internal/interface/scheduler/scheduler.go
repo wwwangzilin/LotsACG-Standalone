@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/config/runtimecfg"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/model/converter"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/model/dto"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/model/entity"
@@ -45,15 +46,17 @@ func StartPosterWithConfig(ctx context.Context, cfg runtimecfg.SchedulerConfig, 
 		log.Info("scheduler: start fetching new artworks")
 		seen := make(map[string]struct{})
 		fetcheds := make([]*dto.FetchedArtwork, 0)
-		for _, sou := range sources {
+		for sourceType, sou := range sources {
 			artworks, err := sou.FetchNewArtworks(ctx, limit)
 			sourceName := fmt.Sprintf("%T", sou)
 			if err != nil {
 				log.Error("fetching new artworks from source", "source", sourceName, "err", err)
 				alerter.RecordFailure(sourceName)
+				source.RecordFailure(sourceType)
 				continue
 			}
 			alerter.RecordSuccess(sourceName)
+			source.RecordSuccess(sourceType)
 			if len(artworks) == 0 {
 				continue
 			}

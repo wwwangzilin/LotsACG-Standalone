@@ -5,6 +5,7 @@ import (
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source/impls/bilibili"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source/impls/danbooru"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source/impls/kemono"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source/impls/misskey"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source/impls/nhentai"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source/impls/pixiv"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source/impls/twitter"
@@ -19,6 +20,7 @@ func initSource() {
 	bilibili.Init()
 	danbooru.Init()
 	kemono.Init()
+	misskey.Init()
 
 	source.InitAll()
 }

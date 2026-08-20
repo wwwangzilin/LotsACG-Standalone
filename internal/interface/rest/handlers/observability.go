@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/interface/rest/common"
 )
 
@@ -116,6 +117,18 @@ func HandleStatusEx(ctx fiber.Ctx) error {
 		status["bot_running"] = s.Running
 		status["bot_username"] = s.BotUsername
 	}
+
+	// 各数据源健康度 (成功率 = 成功/(成功+失败))
+	sourceHealth := source.HealthSnapshot()
+	healthOut := make(map[string]any, len(sourceHealth))
+	for st, hs := range sourceHealth {
+		healthOut[string(st)] = map[string]any{
+			"success":      hs.Success,
+			"failed":       hs.Failed,
+			"success_rate": hs.SuccessRate(),
+		}
+	}
+	status["source_health"] = healthOut
 
 	return ctx.JSON(common.NewSuccess(status))
 }
