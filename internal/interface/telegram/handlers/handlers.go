@@ -76,6 +76,7 @@ func (m HandlerManager) Register(hg *telegohandler.HandlerGroup) {
 	mg.HandleMessage(CancelAndDeletePost, telegohandler.CommandEqual("cd"))
 	mg.HandleMessage(RedescribeArtwork, telegohandler.CommandEqual("redescribe"))
 	mg.HandleMessage(UpdateCmd, telegohandler.CommandEqual("update"))
+	mg.HandleMessage(RollbackCmd, telegohandler.CommandEqual("rollback"))
 	mg.HandleMessage(XPPusher, telegohandler.CommandEqual("xppusher"))
 	mg.HandleMessage(KMua, telegohandler.CommandEqual("kmua"))
 	mg.HandleMessage(Channel, telegohandler.CommandEqual("channel"))

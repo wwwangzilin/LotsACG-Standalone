@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,7 +30,7 @@ import (
 )
 
 const (
-	updateRepoSlug  = "wwwangzilin/LotsACG"
+	updateRepoSlug  = "wwwangzilin/LotsACG-Standalone"
 	updateApiLatest = "https://api.github.com/repos/" + updateRepoSlug + "/releases/latest"
 )
 
@@ -251,6 +253,14 @@ func UpdateConfirmCallback(ctx *telegohandler.Context, query telego.CallbackQuer
 		edit("下载更新失败: " + err.Error())
 		return nil
 	}
+
+	// 完整性校验: 比对 release 的 SHA256SUMS (若存在), 防止下载到损坏/被篡改文件
+	if err := verifyAssetSHA256(ctx, rel, newPath, asset.Name); err != nil {
+		_ = os.Remove(newPath)
+		edit("❌ 完整性校验失败, 已丢弃下载文件: " + err.Error())
+		return nil
+	}
+
 	edit("下载完成, 正在准备重启...")
 
 	if runtime.GOOS == "windows" {
@@ -306,6 +316,73 @@ func mustExecutable() string {
 	return exe
 }
 
+// RollbackCmd 处理 /rollback 指令: 将上一次更新前备份的 .old.exe 恢复, 并重启。
+// 用于新版本异常时的快速回滚。无备份时提示用户。
+func RollbackCmd(ctx *telegohandler.Context, message telego.Message) error {
+	serv, err := requireService(ctx)
+	if err != nil {
+		return err
+	}
+	if !utils.CheckPermissionInGroup(ctx, serv, message, shared.PermissionSudo) {
+		utils.ReplyMessage(ctx, message, "你没有执行回滚的权限")
+		return nil
+	}
+	exePath := mustExecutable()
+	exeDir := filepath.Dir(exePath)
+	exeName := filepath.Base(exePath)
+	exeBase := strings.TrimSuffix(exeName, filepath.Ext(exeName))
+	oldPath := filepath.Join(exeDir, exeBase+".old.exe")
+
+	if _, err := os.Stat(oldPath); err != nil {
+		utils.ReplyMessage(ctx, message, "没有找到备份文件, 无法回滚 (备份名为 "+filepath.Base(oldPath)+")")
+		return nil
+	}
+
+	if runtime.GOOS != "windows" {
+		utils.ReplyMessage(ctx, message, "当前平台暂不支持自动回滚, 请手动替换")
+		return nil
+	}
+
+	// 生成回滚脚本: 等旧进程退出 → 用备份覆盖当前 exe → 重启
+	bat := `@echo off
+chcp 65001 >nul
+cd /d "%~dp0"
+timeout /t 2 /nobreak >nul
+:kill
+taskkill /IM __EXE__ /F >nul 2>&1
+timeout /t 1 /nobreak >nul
+move /Y __OLD__ __EXE__ >nul 2>&1
+if errorlevel 1 goto kill
+echo [LotsACG] rollback success
+start "" __EXE__
+del "%~f0"
+exit /b 0
+`
+	bat = strings.ReplaceAll(bat, "__EXE__", exeName)
+	bat = strings.ReplaceAll(bat, "__OLD__", filepath.Base(oldPath))
+	bat = strings.ReplaceAll(bat, "\n", "\r\n")
+	batPath := filepath.Join(exeDir, "rollback.bat")
+	if err := os.WriteFile(batPath, []byte(bat), 0755); err != nil {
+		utils.ReplyMessage(ctx, message, "生成回滚脚本失败: "+err.Error())
+		return nil
+	}
+
+	cmd := exec.Command("cmd.exe", "/c", batPath)
+	cmd.Dir = exeDir
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x00000008} // DETACHED_PROCESS
+	if err := cmd.Start(); err != nil {
+		utils.ReplyMessage(ctx, message, "启动回滚脚本失败: "+err.Error())
+		return nil
+	}
+	_ = cmd.Process.Release()
+	utils.ReplyMessage(ctx, message, "↩️ 正在回滚到上一版本, bot 即将重启...")
+	go func() {
+		time.Sleep(3 * time.Second)
+		os.Exit(0)
+	}()
+	return nil
+}
+
 // downloadToFile 下载文件到指定路径, 并校验大小。progress 可选 (done, total 字节)。
 func downloadToFile(ctx context.Context, downloadURL, dest string, expectedSize int64, progress func(done, total int64)) error {
 	req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
@@ -356,6 +433,75 @@ func downloadToFile(ctx context.Context, downloadURL, dest string, expectedSize 
 	if expectedSize > 0 && total < expectedSize/2 {
 		return oops.Errorf("downloaded file size mismatch (got %d, want %d)", total, expectedSize)
 	}
+	return nil
+}
+
+// sha256OfFile 计算文件 SHA256 (小写 hex)。
+func sha256OfFile(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// verifyAssetSHA256 从 release 的 SHA256SUMS 资产中查找并校验指定文件。
+// 若 release 无 SHA256SUMS 资产则跳过校验 (返回 nil), 保证向后兼容。
+func verifyAssetSHA256(ctx context.Context, rel *ghRelease, filePath, assetName string) error {
+	var sumsAsset *ghAsset
+	for i := range rel.Assets {
+		if strings.Contains(rel.Assets[i].Name, "SHA256SUMS") {
+			sumsAsset = &rel.Assets[i]
+			break
+		}
+	}
+	if sumsAsset == nil {
+		log.Warn("update: release has no SHA256SUMS asset, skipping checksum verify")
+		return nil
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", sumsAsset.BrowserDownloadURL, nil)
+	if err != nil {
+		return oops.Wrapf(err, "create checksum request failed")
+	}
+	req.Header.Set("User-Agent", "LotsACG")
+	resp, err := githubHTTPClient().Do(req)
+	if err != nil {
+		return oops.Wrapf(err, "checksum download failed")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return oops.Errorf("checksum download http error: %d", resp.StatusCode)
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return oops.Wrapf(err, "read checksum failed")
+	}
+	// 期望格式: "<sha256>  <文件名>" 每行一个
+	expected := ""
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && (fields[1] == assetName || strings.HasSuffix(fields[1], "/"+assetName)) {
+			expected = strings.ToLower(fields[0])
+			break
+		}
+	}
+	if expected == "" {
+		log.Warn("update: SHA256SUMS has no entry for " + assetName + ", skipping")
+		return nil
+	}
+	actual, err := sha256OfFile(filePath)
+	if err != nil {
+		return oops.Wrapf(err, "compute sha256 failed")
+	}
+	if !strings.EqualFold(actual, expected) {
+		return oops.Errorf("SHA256 mismatch for %s: got %s, want %s", assetName, actual, expected)
+	}
+	log.Info("update: SHA256 verified", "asset", assetName, "sha", actual[:16])
 	return nil
 }
 
