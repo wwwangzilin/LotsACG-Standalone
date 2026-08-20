@@ -3,7 +3,6 @@
 > ### 🆕 独立维护仓库（Standalone）
 >
 > 本仓库 **`LotsACG-Standalone`** 是从 [krau/ManyACG](https://github.com/krau/ManyACG) fork 后**独立维护**的版本，
-> 不再自动跟随上游更新，也不作为下游 fork 存在。
 >
 > - **许可证**：保留上游 [AGPL-3.0](LICENSE)（强 copyleft，修改与网络服务使用须开源）
 > - **发布**：新版本发布在本仓库 [Releases](https://github.com/wwwangzilin/LotsACG-Standalone/releases)
