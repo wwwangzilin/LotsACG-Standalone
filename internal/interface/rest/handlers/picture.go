@@ -187,7 +187,8 @@ func HandleGetSizedPictureFileByID(ctx fiber.Ctx) error {
 	return ctx.SendFile(file.Name(), fiber.SendFile{Compress: true})
 }
 
-// buildPixivDownloadClient 构建带 pixiv cookie/Referer/代理的下载客户端 (用于官方源兜底下载)。
+// buildPixivDownloadClient 构建带 pixiv cookie/Referer 的下载客户端 (直连优先)。
+// 代理降级由 httpclient.DownloadWithCache 内部处理 (直连失败自动走 proxyClient)。
 func buildPixivDownloadClient() *req.Client {
 	cfg := runtimecfg.Get()
 	cookies := make([]*http.Cookie, 0, len(cfg.Source.Pixiv.Cookies))
@@ -200,13 +201,6 @@ func buildPixivDownloadClient() *req.Client {
 		SetCommonCookies(cookies...).
 		SetCommonHeaders(map[string]string{"Referer": "https://www.pixiv.net/"}).
 		SetCommonRetryCount(1)
-	proxy := cfg.Source.Proxy
-	if proxy == "" {
-		proxy = cfg.Telegram.Proxy
-	}
-	if proxy != "" {
-		client.SetProxyURL(proxy)
-	}
 	return client
 }
 

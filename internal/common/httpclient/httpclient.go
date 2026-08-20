@@ -33,6 +33,7 @@ func addBytes(ctx context.Context, n int64) {
 
 var (
 	defaultClient *req.Client
+	proxyClient   *req.Client
 	once          sync.Once
 	dlGroup       singleflight.Group
 )
@@ -44,8 +45,21 @@ func initDefaultClient() {
 		SetLogger(log.Default()).
 		EnableDebugLog()
 	defaultClient = c
-	if proxyUrl := runtimecfg.Get().HttpClient.Proxy; proxyUrl != "" {
-		defaultClient.SetProxyURL(proxyUrl)
+
+	// 代理客户端: 仅用于直连失败时的降级重试, 避免图片代理域名可直连时也消耗代理流量。
+	// 代理来源: httpclient.proxy 优先, 其次 source.proxy (主人的 Clash 配置位置)。
+	proxyUrl := runtimecfg.Get().HttpClient.Proxy
+	if proxyUrl == "" {
+		proxyUrl = runtimecfg.Get().Source.Proxy
+	}
+	if proxyUrl != "" {
+		pc := req.C().
+			ImpersonateChrome().
+			SetCommonRetryCount(2).
+			SetLogger(log.Default()).
+			EnableDebugLog()
+		pc.SetProxyURL(proxyUrl)
+		proxyClient = pc
 	}
 }
 
@@ -75,19 +89,45 @@ func DownloadWithCache(ctx context.Context, url string, client *req.Client) (
 		if fi, err := os.Stat(cachePath); err == nil && !fi.IsDir() {
 			return nil, nil
 		}
-		resp, err := client.R().
+		// 直连优先: 图片代理域名 (manyacg/i.pixiv.re 等) 可直连时不走代理, 省流量
+		dlClient := client
+		if dlClient == nil {
+			dlClient = defaultClient
+		}
+		resp, err := dlClient.R().
 			SetContext(ctx).
 			SetOutputFile(cachePath).
 			Get(url)
+		if err == nil && !resp.IsErrorState() {
+			return nil, nil
+		}
 		if err != nil {
-			os.Remove(cachePath)
+			log.Warnf("download direct failed, will retry via proxy: %v", err)
+		} else {
+			log.Warnf("download direct http error %d, will retry via proxy", resp.GetStatusCode())
+		}
+		os.Remove(cachePath)
+
+		// 直连失败: 降级到代理重试 (若配置了代理)
+		if proxyClient != nil {
+			resp2, err2 := proxyClient.R().
+				SetContext(ctx).
+				SetOutputFile(cachePath).
+				Get(url)
+			if err2 != nil {
+				os.Remove(cachePath)
+				return nil, err2
+			}
+			if resp2.IsErrorState() {
+				os.Remove(cachePath)
+				return nil, fmt.Errorf("http error via proxy: %d", resp2.GetStatusCode())
+			}
+			return nil, nil
+		}
+		if err != nil {
 			return nil, err
 		}
-		if resp.IsErrorState() {
-			os.Remove(cachePath)
-			return nil, fmt.Errorf("http error: %d", resp.GetStatusCode())
-		}
-		return nil, nil
+		return nil, fmt.Errorf("http error: %d", resp.GetStatusCode())
 	})
 	select {
 	case r := <-ch:
