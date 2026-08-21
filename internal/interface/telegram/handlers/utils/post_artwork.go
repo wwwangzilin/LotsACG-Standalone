@@ -14,7 +14,6 @@ import (
 	"github.com/unvgo/ouid"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/common/httpclient"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/config/runtimecfg"
-	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source/impls/pixiv"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/interface/telegram/metautil"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/model/command"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/model/entity"
@@ -90,8 +89,7 @@ func doPostAndCreateArtwork(
 		// 下载并存储图片, 同时计算 phash, thumbhash, width, height
 		err = func() error {
 			// 若缓存的 URL 使用的代理与当前配置不一致, 立即刷新避免下载失败重试浪费时间
-			imgProxy := runtimecfg.Get().Source.Pixiv.ImgProxy
-			if imgProxy != "" && !strings.Contains(pic.Original, imgProxy) {
+			if cachedURLProxyMismatch(artwork.SourceURL, pic.Original) {
 				log.Warn("cached picture URL uses different proxy, refreshing")
 				if fresh, err := serv.FetchArtworkInfo(ctx, artwork.SourceURL); err == nil && fresh != nil {
 					if i < len(fresh.Pictures) {
@@ -100,9 +98,8 @@ func doPostAndCreateArtwork(
 					}
 				}
 			}
-			// 按优先级依次尝试多个图源: manyacg -> pixiv.cat -> i.muxmus.com -> 官方 i.pximg.net
-			proxyHosts := runtimecfg.Get().Source.Pixiv.ImgProxyHosts()
-			candidates := pixiv.BuildPixivImageCandidates(pic.Original, proxyHosts)
+			// 按源生成候选图源: twitter 走 twimg 反代; 其他走 pixiv 代理链 (代理优先 -> 官方兜底)
+			candidates := BuildImageCandidates(artwork.SourceURL, pic.Original)
 			var cachedFile *osutil.File
 			var dlErr error
 			for ci, candidate := range candidates {
@@ -130,7 +127,7 @@ func doPostAndCreateArtwork(
 					if i < len(fresh.Pictures) {
 						pic.Original = fresh.Pictures[i].Original
 						pic.Thumbnail = fresh.Pictures[i].Thumbnail
-						candidates = pixiv.BuildPixivImageCandidates(pic.Original, proxyHosts)
+						candidates = BuildImageCandidates(artwork.SourceURL, pic.Original)
 						for _, candidate := range candidates {
 							cachedFile, dlErr = httpclient.DownloadWithCache(ctx, candidate, nil)
 							if dlErr == nil {

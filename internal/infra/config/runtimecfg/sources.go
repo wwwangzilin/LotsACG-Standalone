@@ -52,8 +52,33 @@ type PixivAccountConfig struct {
 }
 
 type SourceTwitterConfig struct {
-	FxTwitterDomain string `toml:"fx_twitter_domain" mapstructure:"fx_twitter_domain" json:"fx_twitter_domain" yaml:"fx_twitter_domain"`
-	Disable         bool   `toml:"disable" mapstructure:"disable" json:"disable" yaml:"disable"`
+	FxTwitterDomain string   `toml:"fx_twitter_domain" mapstructure:"fx_twitter_domain" json:"fx_twitter_domain" yaml:"fx_twitter_domain"`
+	ImgProxy        string   `toml:"img_proxy" mapstructure:"img_proxy" json:"img_proxy" yaml:"img_proxy"`             // 图片反代 (pbs.twimg.com → 反代域名, 空=不重写)
+	ImgProxies      []string `toml:"img_proxies" mapstructure:"img_proxies" json:"img_proxies" yaml:"img_proxies"`     // 备用反代, 按顺序降级
+	Disable         bool     `toml:"disable" mapstructure:"disable" json:"disable" yaml:"disable"`
+}
+
+// ImgProxyHosts returns the ordered list of Twitter image proxy hosts to try
+// when downloading (primary first, then fallbacks). Empty values are skipped.
+func (c SourceTwitterConfig) ImgProxyHosts() []string {
+	seen := make(map[string]struct{}, 4)
+	hosts := make([]string, 0, 4)
+	add := func(h string) {
+		h = strings.TrimSpace(h)
+		if h == "" {
+			return
+		}
+		if _, ok := seen[h]; ok {
+			return
+		}
+		seen[h] = struct{}{}
+		hosts = append(hosts, h)
+	}
+	add(c.ImgProxy)
+	for _, p := range c.ImgProxies {
+		add(p)
+	}
+	return hosts
 }
 
 type SourceBilibiliConfig struct {

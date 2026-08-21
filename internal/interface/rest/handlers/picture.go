@@ -15,7 +15,7 @@ import (
 	"github.com/unvgo/ouid"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/common/httpclient"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/config/runtimecfg"
-	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source/impls/pixiv"
+	"github.com/wwwangzilin/LotsACG-Standalone/internal/infra/source/imgcandidates"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/interface/rest/common"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/interface/rest/utils"
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/service"
@@ -164,10 +164,13 @@ func HandleGetSizedPictureFileByID(ctx fiber.Ctx) error {
 		return ctx.SendStream(fullReader)
 	}
 	// 无存储信息: 本地下载并返回 (避免依赖外部图床, 修复图片外链不可达时的加载失败)
-	// 按优先级尝试多个图源: 配置代理 -> pixiv.cat -> i.muxmus.com -> 官方 i.pximg.net
+	// 按源生成候选: twitter 走 twimg 反代; 其他走 pixiv 代理链 (代理优先 -> 官方兜底)
 	safeCtx := ctx.Context()
-	proxyHosts := runtimecfg.Get().Source.Pixiv.ImgProxyHosts()
-	candidates := pixiv.BuildPixivImageCandidates(picture.Original, proxyHosts)
+	sourceURL := ""
+	if picture.Artwork != nil {
+		sourceURL = picture.Artwork.SourceURL
+	}
+	candidates := imgcandidates.ForURL(sourceURL, picture.Original)
 	client := buildPixivDownloadClient()
 	var file *osutil.File
 	var dlErr error

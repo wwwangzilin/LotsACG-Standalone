@@ -152,6 +152,9 @@ value = ""
 
 [source.twitter]
 # cookies = ""                        # 可选: 提高推特抓取成功率
+# fx_twitter_domain = "fxtwitter.com" # 数据层 API 域名 (直连可达)
+# img_proxy = ""                      # 图片反代: 把 pbs.twimg.com 重写为该域名 (免梯子), 留空=不重写走官方
+# img_proxies = []                    # 备用反代, 按顺序降级 (直连失败自动走 source.proxy 兜底)
 
 [source.danbooru]
 # username = ""
