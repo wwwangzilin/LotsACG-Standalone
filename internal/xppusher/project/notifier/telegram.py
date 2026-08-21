@@ -10,6 +10,7 @@ from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, InputMedia
 from telegram.ext import Application, CallbackQueryHandler
 
 from .base import BaseNotifier
+from .request_fallback import FallbackTelegramRequest
 from pixiv_client import Illust, PixivClient
 from utils import get_pixiv_cat_url
 
@@ -81,7 +82,8 @@ class TelegramNotifier(BaseNotifier):
         thread_id: int | None = None,          # Telegram Topic (Thread) ID (默认)
         on_feedback: Optional[Callable] = None,
         on_action: Optional[Callable] = None,
-        proxy_url: str | None = None,             # HTTP 代理地址
+        proxy_url: str | None = None,             # HTTP 代理地址 (最终兜底)
+        cf_worker_url: str | None = None,         # Cloudflare Worker 反代 (直连失败后降级)
         max_pages: int = 10,
         image_quality: int = 85,               # JPEG 压缩质量 (默认 85)
         max_image_size: int = 2000,            # 最大边长 (默认 2000px)
@@ -102,8 +104,10 @@ class TelegramNotifier(BaseNotifier):
             if proxy_url:
                 logger.info(f"TelegramNotifier using system proxy: {proxy_url}")
 
-        from telegram.request import HTTPXRequest
-        request = HTTPXRequest(proxy=proxy_url) if proxy_url else None
+        # 多策略降级: 直连 → CF Worker → 本地代理
+        request = FallbackTelegramRequest(proxy_url=proxy_url, cf_worker_url=cf_worker_url)
+        if cf_worker_url:
+            logger.info(f"TelegramNotifier CF Worker 反代已启用: {cf_worker_url}")
         self.bot = Bot(token=bot_token, request=request)
         
         # 支持单个或多个 chat_id，并去重防止重复发送
@@ -120,6 +124,7 @@ class TelegramNotifier(BaseNotifier):
         self.on_feedback = on_feedback
         self.on_action = on_action
         self.proxy_url = proxy_url
+        self.cf_worker_url = cf_worker_url
         self.max_pages = max_pages
         self.image_quality = image_quality
         self.max_image_size = max_image_size
@@ -571,8 +576,6 @@ class TelegramNotifier(BaseNotifier):
         from telegram.ext import MessageHandler, filters, CommandHandler
         from apscheduler.triggers.cron import CronTrigger
         
-        from telegram.request import HTTPXRequest
-        
         # 增加超时以减少 "Server disconnected" 错误
         # 长轮询需要更长的 read_timeout（Telegram 服务端默认最多等待 50 秒）
         request_kwargs = {
@@ -581,10 +584,11 @@ class TelegramNotifier(BaseNotifier):
             "connect_timeout": 30,
             "pool_timeout": 30,
         }
-        if self.proxy_url:
-            request_kwargs["proxy"] = self.proxy_url
-        
-        request = HTTPXRequest(**request_kwargs)
+        request = FallbackTelegramRequest(
+            proxy_url=self.proxy_url,
+            cf_worker_url=self.cf_worker_url,
+            **request_kwargs,
+        )
         builder = Application.builder().token(self.bot.token).request(request)
         
         self._app = builder.build()

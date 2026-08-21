@@ -6,6 +6,10 @@ api_id = 1025907
 api_hash = "452b0359b988148995f22ff0f4229750"
 use_ipv6 = false
 proxy = ""
+# Cloudflare Worker 反代 (HTTP 通道专用): kmua 通过 MTProto 连接 Telegram,
+# 标准 CF Worker HTTP 反代无法代理 MTProto, 该配置仅用于文档占位与未来
+# Bot API HTTP 通道, 当前不会生效。
+# cf_worker_url = ""
 log_retention_days = 30
 log_level = "INFO"
 lang = "zh-CN"

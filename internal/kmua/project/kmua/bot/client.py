@@ -1,11 +1,20 @@
 from os import cpu_count
 from pathlib import Path
 
+import logging
+
 from pyrogram.client import Client
 from pyrogram.session import Session
 
 from kmua.bot.kurigram_patch import install as install_kurigram_patch
 from kmua.config import app_config
+
+if app_config.cf_worker_url:
+    logging.getLogger(__name__).warning(
+        "cf_worker_url 已配置但 kmua 经 MTProto 连接 Telegram, "
+        "标准 CF Worker HTTP 反代无法代理 MTProto, 该配置当前不会生效; "
+        "请改用 proxy 配置本地代理。"
+    )
 
 # kurigram/pyrogram serialize ALL MTProto crypto through a single
 # ThreadPoolExecutor worker per session (Session.CRYPTO_EXECUTOR_WORKERS = 1):

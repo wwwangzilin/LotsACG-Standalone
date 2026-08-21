@@ -193,8 +193,13 @@ notifier:
       - 12345678
     # 话题 ID (可选，用于 Supergroup 话题)
     thread_id: null
-    # 代理地址 (可选)
+    # 代理地址 (可选, 最终兜底)
     proxy_url: null
+    # Cloudflare Worker 反代 (可选, 免梯子): 直连失败自动降级到该反代, 再失败才走 proxy_url
+    # 支持两种写法:
+    #   - 完整 URL 占位: "https://worker.example.com/proxy?url={url}"
+    #   - 域名拼接: "https://worker.example.com" (自动把 /botxxx/xxx 拼到后面)
+    cf_worker_url: null
 
     # 图片压缩配置
     image_quality: 85 # JPEG 压缩质量 (50-100)

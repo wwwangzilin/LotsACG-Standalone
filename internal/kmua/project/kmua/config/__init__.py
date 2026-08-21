@@ -33,6 +33,10 @@ class _AppConfig(pydantic.BaseModel):
     api_hash: str = "452b0359b988148995f22ff0f4229750"
     use_ipv6: bool = False
     proxy: str = ""  # Telegram 连接代理, 如 "http://127.0.0.1:7899" / "socks5://127.0.0.1:7899" (GFW 环境需要)
+    # Cloudflare Worker 反代 (HTTP 通道专用): kmua 经 MTProto 连接 Telegram,
+    # 标准 CF Worker HTTP 反代无法代理 MTProto, 该字段仅作文档占位与未来 Bot API
+    # HTTP 通道预留, 当前不会生效。
+    cf_worker_url: str = ""
     log_retention_days: int = 30
     log_level: str = "INFO"
     lang: str = "zh-CN"

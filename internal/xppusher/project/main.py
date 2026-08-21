@@ -388,6 +388,7 @@ async def setup_notifiers(config: dict, client: PixivClient, profiler: XPProfile
                 on_feedback=on_feedback,
                 on_action=on_action,
                 proxy_url=tg_cfg.get("proxy_url"),
+                cf_worker_url=tg_cfg.get("cf_worker_url"),
                 max_pages=max_pages,
                 image_quality=tg_cfg.get("image_quality", 85),
                 max_image_size=tg_cfg.get("max_image_size", 2000),
