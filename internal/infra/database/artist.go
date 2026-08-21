@@ -48,7 +48,7 @@ func (d *DB) ListArtists(ctx context.Context, offset, limit int) ([]entity.Artis
 	}
 	var artists []entity.Artist
 	err := d.db.WithContext(ctx).Model(&entity.Artist{}).
-		Order("created_at ASC").
+		Order("id ASC").
 		Limit(limit).
 		Offset(offset).
 		Find(&artists).Error
