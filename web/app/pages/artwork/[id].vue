@@ -205,8 +205,7 @@ const setBackgroundImage = async () => {
   const body = document.body
   if (color) {
     body.style.backgroundImage =
-      `radial-gradient(1100px 560px at 15% -10%, ${color}66, transparent 65%),` +
-      `radial-gradient(900px 480px at 90% 0%, rgba(236, 72, 153, 0.10), transparent 60%),` +
+      `radial-gradient(1100px 560px at 15% -10%, ${color}55, transparent 65%),` +
       `linear-gradient(180deg, hsla(var(--hsl-body), 0.99), hsla(var(--hsl-body), 0.99))`
   } else {
     body.style.backgroundImage = ''

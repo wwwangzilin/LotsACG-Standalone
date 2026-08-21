@@ -68,13 +68,13 @@ useSeoMeta({
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(124, 58, 237, 0.35), rgba(59, 130, 246, 0.35), rgba(236, 72, 153, 0.35));
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.35), rgba(96, 165, 250, 0.35));
   border-radius: 8px;
   transition: background-color 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(124, 58, 237, 0.7), rgba(59, 130, 246, 0.7), rgba(236, 72, 153, 0.7));
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.7), rgba(96, 165, 250, 0.7));
 }
 
 ::-webkit-scrollbar-corner {
@@ -82,12 +82,11 @@ useSeoMeta({
 }
 
 body {
-  /* 深空黑/浅底 + 顶部霓虹光晕 */
+  /* 深空蓝黑/纯净浅底 + 极淡的蓝色氛围光 */
   background-color: hsla(var(--hsl-body), 0.99);
   background-image:
-    radial-gradient(1200px 560px at 15% -12%, rgba(124, 58, 237, 0.10), transparent 60%),
-    radial-gradient(1000px 480px at 88% -8%, rgba(236, 72, 153, 0.08), transparent 60%),
-    radial-gradient(900px 500px at 55% 110%, rgba(59, 130, 246, 0.06), transparent 60%),
+    radial-gradient(1200px 560px at 20% -12%, rgba(59, 130, 246, 0.07), transparent 60%),
+    radial-gradient(900px 480px at 85% -8%, rgba(37, 99, 235, 0.05), transparent 60%),
     linear-gradient(180deg, hsla(var(--hsl-body), 0.99), hsla(var(--hsl-body), 0.99));
   background-size: cover;
   background-attachment: fixed;
@@ -103,7 +102,7 @@ body {
 
 /* 选择色跟随主题 */
 ::selection {
-  background: rgba(124, 58, 237, 0.35);
+  background: rgba(37, 99, 235, 0.3);
 }
 
 .kawaii-bounce-enter-active,
