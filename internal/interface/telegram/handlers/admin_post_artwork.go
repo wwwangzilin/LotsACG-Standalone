@@ -167,6 +167,7 @@ func PostArtworkCommand(ctx *telegohandler.Context, message telego.Message) erro
 
 	// 展开画师主页链接: 将作者主页替换为其全部作品链接
 	expanded := make([]string, 0, len(sourceURLs)*2)
+	artistURLs := make([]string, 0)
 	for _, sourceURL := range sourceURLs {
 		if serv.FindArtistPageURL(sourceURL) != "" {
 			urls, err := serv.FetchArtistArtworks(ctx, sourceURL, 0)
@@ -181,11 +182,21 @@ func PostArtworkCommand(ctx *telegohandler.Context, message telego.Message) erro
 			}
 			log.Info("post: expand artist page", "url", sourceURL, "count", len(urls))
 			expanded = append(expanded, urls...)
+			artistURLs = append(artistURLs, sourceURL)
 		} else {
 			expanded = append(expanded, sourceURL)
 		}
 	}
 	sourceURLs = expanded
+
+	// 发布画师主页时自动订阅该画师: 之后新作品将自动补齐发布到主频道
+	for _, artistURL := range artistURLs {
+		if added, err := serv.FollowArtist(ctx, message.From.ID, artistURL); err != nil {
+			log.Warnf("post: failed to auto subscribe artist %s: %v", artistURL, err)
+		} else if added {
+			log.Info("post: auto subscribed artist", "url", artistURL, "user", message.From.ID)
+		}
+	}
 
 	seen := make(map[string]struct{}, len(sourceURLs))
 	uniqueSourceURLs := make([]string, 0, len(sourceURLs))

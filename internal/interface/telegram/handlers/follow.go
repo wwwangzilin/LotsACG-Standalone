@@ -33,7 +33,7 @@ func parseFollowOpts(args []string) (map[string]string, []string) {
 }
 
 // FollowArtist 处理 /follow: 关注一个画师, 画师发布新作品时自动推送。
-// 支持: /follow [-g=组名] <画师主页链接>
+// 支持: /follow [-g=组名] <画师主页链接>  或  /follow --all (一键订阅所有已发布作者)
 func FollowArtist(ctx *telegohandler.Context, message telego.Message) error {
 	serv, err := requireService(ctx)
 	if err != nil {
@@ -41,10 +41,24 @@ func FollowArtist(ctx *telegohandler.Context, message telego.Message) error {
 	}
 	_, _, args := telegoutil.ParseCommand(message.Text)
 	opts, rest := parseFollowOpts(args)
+
+	// 一键订阅所有已发布过作品的作者
+	for _, a := range args {
+		if strings.EqualFold(a, "--all") || strings.EqualFold(a, "-all") {
+			subscribed, err := serv.SubscribeAllArtists(ctx, message.From.ID)
+			if err != nil {
+				utils.ReplyMessage(ctx, message, "订阅失败: "+err.Error())
+				return nil
+			}
+			utils.ReplyMessage(ctx, message, fmt.Sprintf("✅ 已一键订阅全部作者, 本次新增 %d 位\n订阅作者的新作品将自动补齐发布到主频道", subscribed))
+			return nil
+		}
+	}
+
 	text := strings.Join(rest, " ")
 	artistURL := serv.FindArtistPageURL(text)
 	if artistURL == "" {
-		utils.ReplyMessage(ctx, message, "请提供有效的画师主页链接, 例如:\n/follow https://www.pixiv.net/users/123456\n/follow -g=佬 https://www.pixiv.net/users/123456")
+		utils.ReplyMessage(ctx, message, "请提供有效的画师主页链接, 例如:\n/follow https://www.pixiv.net/users/123456\n/follow -g=佬 https://www.pixiv.net/users/123456\n一键订阅全部作者: /follow --all")
 		return nil
 	}
 	added, err := serv.FollowArtistWithGroup(ctx, message.From.ID, artistURL, opts["g"])

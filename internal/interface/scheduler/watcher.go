@@ -16,6 +16,8 @@ type ArtworkNotifier interface {
 	SendArtworkNotification(ctx context.Context, userID int64, sourceURL string) error
 	// SendTextToUser 向用户发送一条文本消息 (用于管理端提醒)。
 	SendTextToUser(ctx context.Context, userID int64, text string) error
+	// PostArtworkToChannel 将作品发布到主频道 (订阅画师新作品自动补齐发布)。
+	PostArtworkToChannel(ctx context.Context, sourceURL string) error
 }
 
 // inactiveArtistDays 画师超过该天数无新作品时向管理员发出提醒。
@@ -69,14 +71,13 @@ func checkArtistFollows(ctx context.Context, serv *service.Service, notifier Art
 		if err := serv.SaveArtistFollowData(ctx, data); err != nil {
 			log.Warn("watcher: failed to save artist follow data", "url", data.URL, "err", err)
 		}
-		for _, userID := range data.Users {
-			for _, url := range newURLs {
-				if err := notifier.SendArtworkNotification(ctx, userID, url); err != nil {
-					log.Warn("watcher: failed to notify user", "user", userID, "url", url, "err", err)
-				}
+		// 订阅画师的新作品自动补齐发布到主频道 (不做私聊推送)
+		for _, url := range newURLs {
+			if err := notifier.PostArtworkToChannel(ctx, url); err != nil {
+				log.Warn("watcher: failed to post artist artwork to channel", "url", url, "err", err)
 			}
 		}
-		log.Info("watcher: artist new artworks notified", "url", data.URL, "new", len(newURLs), "users", len(data.Users))
+		log.Info("watcher: artist new artworks posted to channel", "url", data.URL, "new", len(newURLs))
 	}
 }
 
