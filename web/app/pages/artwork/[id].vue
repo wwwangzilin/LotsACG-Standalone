@@ -19,8 +19,8 @@
               </div>
             </div>
           </div>
-          <div class="artwork-info">
-            <div class="artwork-title">{{ artwork?.title }}</div>
+          <div class="artwork-info glass-panel">
+            <div class="artwork-title title-font">{{ artwork?.title }}</div>
             <div class="author-source-section">
               <var-link class="info-link artwork-artist" underline="none" :to="`/artist/${artwork?.artist.id}`">
                 <var-icon name="account-circle" />
@@ -53,14 +53,15 @@
               <var-button @click="routerBack" size="large" title="返回">
                 <var-icon name="chevron-left" />
               </var-button>
-              <var-button size="large" text-color="#39c5bb" @click="downloadPictures" :loading="!downloadAvailable"
+              <var-button size="large" @click="downloadPictures" :loading="!downloadAvailable"
                 title="下载">
                 <var-icon name="download-outline" />
               </var-button>
-              <var-button size="large" title="相关推荐" text-color="#39c5bb" @click="searchSimilar">
+              <var-button size="large" title="相关推荐" @click="searchSimilar">
                 <var-icon name="camera-outline" />
               </var-button>
-              <var-button size="large" :text-color="isFavorited ? '#f44336' : '#39c5bb'" @click="toggleFavorite"
+              <var-button size="large" :text-color="isFavorited ? 'var(--color-danger)' : undefined"
+                @click="toggleFavorite"
                 :title="isFavorited ? '取消收藏' : '收藏'">
                 <var-icon :name="isFavorited ? 'heart' : 'heart-outline'" />
               </var-button>
@@ -84,20 +85,20 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onDeactivated, onActivated } from 'vue'
+import { ref, computed, onDeactivated, onActivated, onMounted, onUnmounted } from 'vue'
 import { BlobReader, BlobWriter, ZipWriter } from '@zip.js/zip.js'
 import filesaver from 'file-saver'
 const { saveAs } = filesaver
 import { ImagePreview, Snackbar } from '@varlet/ui'
 import asyncPool from 'tiny-async-pool'
 import type { Artwork, ArtworkDetailResponse, Picture } from '~/types/artwork'
+import { extractDominantColor } from '~/utils/color'
 
 const route = useRoute()
 const artworkStore = useArtworkStore()
 const favoritesStore = useFavoritesStore()
 const artworkId = route.params.id as string
 
-const BACKGROUND_DELAY = 1000
 const DOWNLOAD_CONCURRENCY = 3
 const SNACKBAR_CLEAR_DELAY = 3000
 
@@ -196,17 +197,45 @@ const setupSEO = () => {
 
 setupSEO()
 
-const setBackgroundImage = () => {
+// 背景: 提取作品主色 → 主题色渐变 (整图背景改为颜色氛围)
+const setBackgroundImage = async () => {
   const firstPicture = artwork.value?.pictures?.[0]
   if (!firstPicture) return
-  setTimeout(() => {
-    document.body.style.backgroundImage = `url(${firstPicture.regular})`
-  }, BACKGROUND_DELAY)
+  const color = await extractDominantColor(firstPicture.regular)
+  const body = document.body
+  if (color) {
+    body.style.backgroundImage =
+      `radial-gradient(1100px 560px at 15% -10%, ${color}66, transparent 65%),` +
+      `radial-gradient(900px 480px at 90% 0%, rgba(236, 72, 153, 0.10), transparent 60%),` +
+      `linear-gradient(180deg, hsla(var(--hsl-body), 0.99), hsla(var(--hsl-body), 0.99))`
+  } else {
+    body.style.backgroundImage = ''
+  }
 }
 
 const clearBackgroundImage = () => {
   document.body.style.backgroundImage = ''
 }
+
+// 键盘 ←/→ 切换图片预览
+const previewIndex = ref(0)
+const onKeyDown = (e: KeyboardEvent) => {
+  const pictures = artwork.value?.pictures
+  if (!pictures?.length) return
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    const delta = e.key === 'ArrowLeft' ? -1 : 1
+    const next = (previewIndex.value + delta + pictures.length) % pictures.length
+    previewIndex.value = next
+    previewImage(next)
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeyDown)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown)
+})
 
 const imageLoad = (index: number) => {
   if (index === 0) {
@@ -347,14 +376,15 @@ const searchSimilar = () => {
   overflow-y: auto;
   scroll-behavior: smooth;
   scrollbar-width: none;
-  background-color: rgba(192, 238, 240, 0.2);
-  border-radius: 4px;
+  background: var(--color-surface-container-low);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--card-radius, 14px);
 }
 
 .pictures-container {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   align-items: center;
   padding: 8px;
 }
@@ -362,7 +392,7 @@ const searchSimilar = () => {
 .picture-card {
   margin: 0 auto;
   transition: all 0.3s ease;
-  border-radius: 2px;
+  border-radius: 10px;
   overflow: hidden;
 }
 
@@ -373,6 +403,12 @@ const searchSimilar = () => {
   max-width: 30%;
   height: 90vh;
   overflow: hidden;
+  border-radius: var(--card-radius, 14px);
+  padding: 20px 18px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
 }
 
 .artwork-title {
@@ -383,6 +419,11 @@ const searchSimilar = () => {
   overflow-wrap: break-word;
   flex-shrink: 0;
   line-height: 1.25;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 .info-inline-section {
@@ -399,7 +440,7 @@ const searchSimilar = () => {
   margin-bottom: 20px;
   flex-shrink: 0;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(192, 238, 240, 0.25);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .info-label {
@@ -424,11 +465,11 @@ const searchSimilar = () => {
 }
 
 .info-link:hover {
-  background-color: rgba(192, 238, 240, 0.4);
+  background: var(--gradient-soft);
 }
 
 .source-url-link {
-  background-color: rgba(192, 238, 240, 0.3);
+  background: var(--gradient-soft);
   font-weight: bold;
 }
 
@@ -437,7 +478,7 @@ const searchSimilar = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(192, 238, 240, 0.2);
+  background: var(--gradient-soft);
 }
 
 .artwork-description {
@@ -450,7 +491,7 @@ const searchSimilar = () => {
   padding: 0 2px;
   margin: 0 0 20px 0;
   scrollbar-width: thin;
-  scrollbar-color: rgba(192, 238, 240, 0.5) transparent;
+  scrollbar-color: rgba(124, 58, 237, 0.5) transparent;
 }
 
 .artwork-description::-webkit-scrollbar {
@@ -458,17 +499,17 @@ const searchSimilar = () => {
 }
 
 .artwork-description::-webkit-scrollbar-track {
-  background: rgba(192, 238, 240, 0.1);
+  background: rgba(124, 58, 237, 0.1);
   border-radius: 3px;
 }
 
 .artwork-description::-webkit-scrollbar-thumb {
-  background-color: rgba(192, 238, 240, 0.5);
+  background-color: rgba(124, 58, 237, 0.5);
   border-radius: 3px;
 }
 
 .artwork-description::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(192, 238, 240, 0.7);
+  background-color: rgba(124, 58, 237, 0.7);
 }
 
 .artwork-description.scrollable-content {
@@ -503,7 +544,7 @@ const searchSimilar = () => {
   max-height: 120px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(192, 238, 240, 0.5) transparent;
+  scrollbar-color: rgba(124, 58, 237, 0.5) transparent;
 }
 
 .artwork-tags::-webkit-scrollbar {
@@ -515,7 +556,7 @@ const searchSimilar = () => {
 }
 
 .artwork-tags::-webkit-scrollbar-thumb {
-  background-color: rgba(192, 238, 240, 0.5);
+  background-color: rgba(124, 58, 237, 0.5);
   border-radius: 2px;
 }
 
@@ -526,7 +567,7 @@ const searchSimilar = () => {
   gap: 12px;
   justify-content: center;
   align-items: center;
-  border-top: 1px solid rgba(192, 238, 240, 0.25);
+  border-top: 1px solid var(--glass-border);
   flex-shrink: 0;
 }
 

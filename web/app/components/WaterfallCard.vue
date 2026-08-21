@@ -1,6 +1,7 @@
 <template>
   <div>
-    <var-paper ripple class="card" @click.left="handleCardClick(item)" @click.right.prevent="handleRightClick">
+    <var-paper ripple class="card" @click.left="handleCardClick(item)" @click.right.prevent="handleRightClick"
+      @mouseenter="hovered = true" @mouseleave="hovered = false">
       <div :data-id="item.id" class="card-content" underline="none" rel="prefetch">
         <div class="cover" :style="{
           aspectRatio:
@@ -16,6 +17,20 @@
             <img v-if="loaded" :src="firstPic?.thumbnail" :alt="item.detail.title" class="img" loading="lazy"
               ref="cardImage" />
           </Transition>
+
+          <!-- hover 操作层: 收藏 / 预览 / 下载 -->
+          <div class="card-actions" v-show="hovered || isSmall" @click.stop>
+            <var-button size="small" round :type="isFavorited ? 'danger' : 'primary'" @click="toggleFavorite"
+              :title="isFavorited ? '取消收藏' : '收藏'">
+              <var-icon :name="isFavorited ? 'heart' : 'heart-outline'" size="16" />
+            </var-button>
+            <var-button size="small" round type="info" @click="handlePreview" title="预览">
+              <var-icon name="eye-outline" size="16" />
+            </var-button>
+            <var-button size="small" round type="warning" @click="handleDownload" title="下载原图">
+              <var-icon name="download-outline" size="16" />
+            </var-button>
+          </div>
         </div>
 
         <div class="overlay" v-if="!onlyImage">
@@ -36,6 +51,8 @@
 <script setup lang="ts">
 import type { WaterfallItem } from '~/types/artwork'
 import { thumbHashToDataURL } from 'thumbhash'
+import { Snackbar } from '@varlet/ui'
+import filesaver from 'file-saver'
 
 const props = withDefaults(
   defineProps<{
@@ -46,6 +63,9 @@ const props = withDefaults(
     onlyImage: false
   }
 )
+
+const hovered = ref(false)
+const isSmall = useSmallWindow()
 
 const imageLoadCache = useState<Map<string, boolean>>('imageLoadCache', () => new Map())
 const MAX_CACHE_SIZE = 1000
@@ -115,6 +135,39 @@ const handleCardClick = (item: WaterfallItem) => {
 const handleRightClick = () => {
   showViewer.value = true
 }
+
+const handlePreview = () => {
+  showViewer.value = true
+}
+
+// 收藏
+const favoritesStore = useFavoritesStore()
+const isFavorited = computed(() => favoritesStore.isFavorite(props.item.id))
+
+const toggleFavorite = () => {
+  const added = favoritesStore.toggle(props.item.detail)
+  Snackbar({
+    content: added ? '已收藏 ♥' : '已取消收藏',
+    position: 'bottom',
+    type: added ? 'success' : 'warning'
+  })
+}
+
+// 下载第一张原图
+const handleDownload = async () => {
+  const pic = firstPic.value
+  if (!pic) return
+  try {
+    const resp = await $acgapi<Blob>(`/picture/file/${pic.id}`)
+    if (resp) {
+      saveAs(resp, pic.file_name)
+      Snackbar({ content: '下载成功', position: 'bottom', type: 'success' })
+    }
+  } catch (e: any) {
+    console.error(e)
+    Snackbar({ content: '下载失败', position: 'bottom', type: 'error' })
+  }
+}
 </script>
 
 <style scoped>
@@ -123,8 +176,16 @@ const handleRightClick = () => {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: var(--card-radius, 14px);
   cursor: pointer;
+  box-shadow: var(--card-shadow, none);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  background: var(--color-surface-container);
+}
+
+.card:hover {
+  box-shadow: var(--card-shadow-hover, none);
+  transform: translateY(-3px);
 }
 
 .card-content {
@@ -144,18 +205,37 @@ const handleRightClick = () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: transform 0.4s ease;
 }
 
-.action-button {
+.card-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   z-index: 2;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.card:hover .card-actions,
+.card-actions.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 小屏常显操作层 (无 hover) */
+@media (hover: none) {
+  .card-actions {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .card:hover .img {
-  transform: scale(1.12);
+  transform: scale(1.08);
 }
 
 .card:hover .overlay {
@@ -167,7 +247,7 @@ const handleRightClick = () => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
   padding: 10px;
   transform: translateY(100%);
   transition: transform 0.3s ease;
@@ -180,16 +260,20 @@ const handleRightClick = () => {
     margin: 0 0 3px;
     font-size: 14px;
     font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .author {
     font-size: 12px;
+    opacity: 0.85;
   }
 }
 
 @media (max-width: 768px) {
   .card {
-    border-radius: 0;
+    border-radius: 10px;
   }
 
   .card:hover .img {

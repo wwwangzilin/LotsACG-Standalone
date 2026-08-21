@@ -86,7 +86,7 @@ const { waterfallOption, result, calcItemHeight } = useWaterfall({
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(192, 238, 240, 0.06);
+  background: var(--gradient-soft);
 }
 
 .tag-info {
@@ -102,9 +102,10 @@ const { waterfallOption, result, calcItemHeight } = useWaterfall({
   align-items: center;
   gap: 10px;
   padding: 10px 20px;
-  border-radius: 8px;
-  border: 1px solid rgba(57, 197, 187, 0.3);
-  color: #39c5bb;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+  color: var(--color-primary);
+  background: var(--gradient-soft);
 }
 
 .tag-name {

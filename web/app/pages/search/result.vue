@@ -116,7 +116,7 @@ const tipText = computed(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(192, 238, 240, 0.06);
+  background: var(--gradient-soft);
 }
 
 .search-info {
@@ -129,7 +129,7 @@ const tipText = computed(() => {
 }
 
 .search-icon-wrapper {
-  color: #39c5bb;
+  color: var(--color-primary);
 }
 
 .search-title {

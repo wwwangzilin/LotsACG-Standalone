@@ -107,7 +107,7 @@ useSeoMeta({
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(192, 238, 240, 0.08);
+  background: var(--gradient-soft);
 }
 
 .artist-info {
@@ -119,14 +119,17 @@ useSeoMeta({
   flex-direction: column;
   gap: 12px;
   padding: 20px 32px;
-  border-radius: 12px;
-  border: 1px solid rgba(192, 238, 240, 0.25);
+  border-radius: var(--card-radius, 14px);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 @media (prefers-color-scheme: dark) {
   .artist-details {
-    background: rgba(192, 238, 240, 0.08);
-    border: 1px solid rgba(192, 238, 240, 0.25);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
   }
 }
 
@@ -157,11 +160,11 @@ useSeoMeta({
 
 .artist-source-badge {
   padding: 2px 8px;
-  color: #39c5bb;
+  color: var(--color-primary);
   border-radius: 4px;
   font-size: 13px;
   font-weight: 600;
-  border: 1px solid rgba(57, 197, 187, 0.4);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
 }
 
 .content-section {

@@ -2,7 +2,7 @@
   <div>
     <search-dialog v-model:show="showSearchDialog" />
 
-    <var-app-bar title-position="center" :fixed="true" :placeholder="true">
+    <var-app-bar title-position="center" :fixed="true" :placeholder="true" :elevation="false" class="glass-appbar">
       <var-link text-color="#fff" underline="none" text-size="large" to="/">
         <img :src="bannerSrc" alt="ManyACG" class="banner-logo" />
       </var-link>
@@ -29,7 +29,7 @@
     </var-app-bar>
 
     <var-popup position="left" v-model:show="showPopup" :lock-scroll="false">
-      <div class="popup-content">
+      <div class="popup-content glass-panel">
         <var-space>
           <div id="close-popup-button">
             <var-button text @click="showPopup = false" color="transparent" title="close">
@@ -38,7 +38,9 @@
           </div>
           <div id="popup-top-text">
             <NuxtLink to="/" @click="showPopup = false">
-              <var-link underline="none" text-size="large">ManyACG</var-link>
+              <var-link underline="none" text-size="large">
+                <span class="title-font gradient-text">ManyACG</span>
+              </var-link>
             </NuxtLink>
           </div>
         </var-space>
@@ -53,9 +55,12 @@
       </div>
     </var-popup>
 
-    <slot />
+    <div class="page-wrapper">
+      <slot />
+    </div>
 
     <FabButton v-if="showFabButton" />
+    <MobileTabBar />
   </div>
 </template>
 
@@ -174,6 +179,30 @@ const themeIcon = computed(() => {
 <style scoped>
 .popup-content {
   width: 300px;
+  min-height: 100vh;
+}
+
+/* 小屏底部导航留白 */
+.page-wrapper {
+  min-height: 60vh;
+}
+
+@media (max-width: 768px) {
+  .page-wrapper {
+    padding-bottom: 64px;
+  }
+}
+
+/* 顶栏毛玻璃: 半透明底 + 模糊, 随主题变量 */
+.glass-appbar :deep(.var-app-bar) {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.glass-appbar :deep(.var-app-bar__title) {
+  color: var(--color-text);
 }
 
 #close-popup-button {

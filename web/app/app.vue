@@ -58,35 +58,52 @@ useSeoMeta({
 
 <style>
 ::-webkit-scrollbar {
-  width: 0px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  border-radius: 10px;
+  background: transparent;
+  border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(68, 194, 219, 0.2);
-  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.35), rgba(59, 130, 246, 0.35), rgba(236, 72, 153, 0.35));
+  border-radius: 8px;
   transition: background-color 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(68, 194, 219, 0.8);
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.7), rgba(59, 130, 246, 0.7), rgba(236, 72, 153, 0.7));
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 body {
-  background-image: linear-gradient(180deg, hsla(var(--hsl-body), 0.99), hsla(var(--hsl-body), 0.99));
+  /* 深空黑/浅底 + 顶部霓虹光晕 */
+  background-color: hsla(var(--hsl-body), 0.99);
+  background-image:
+    radial-gradient(1200px 560px at 15% -12%, rgba(124, 58, 237, 0.10), transparent 60%),
+    radial-gradient(1000px 480px at 88% -8%, rgba(236, 72, 153, 0.08), transparent 60%),
+    radial-gradient(900px 500px at 55% 110%, rgba(59, 130, 246, 0.06), transparent 60%),
+    linear-gradient(180deg, hsla(var(--hsl-body), 0.99), hsla(var(--hsl-body), 0.99));
   background-size: cover;
   background-attachment: fixed;
   background-position: center;
-  background-color: hsla(var(--hsl-body), 0.99);
   background-blend-mode: overlay;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, background-image 0.3s ease;
   color: var(--color-text);
   overflow-x: hidden;
   overflow-y: scroll;
-  font-family: 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans', sans-serif;
+  font-family: 'HarmonyOS Sans SC', 'Noto Sans SC', 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 选择色跟随主题 */
+::selection {
+  background: rgba(124, 58, 237, 0.35);
 }
 
 .kawaii-bounce-enter-active,
@@ -132,5 +149,21 @@ body {
 .fade-leave-to {
   opacity: 0;
   filter: blur(1rem);
+}
+
+/* 页面切换过渡 */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>

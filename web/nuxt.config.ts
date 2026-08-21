@@ -2,6 +2,12 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-11',
   devtools: { enabled: true },
+  app: {
+    pageTransition: {
+      name: 'page-fade',
+      mode: 'out-in'
+    }
+  },
   runtimeConfig: {
     public: {
       botUsername: process.env.NUXT_PUBLIC_BOT_USERNAME
@@ -37,6 +43,8 @@ export default defineNuxtConfig({
     '@nuxtjs/fontaine',
     'pinia-plugin-persistedstate/nuxt',
   ],
+
+  css: ['~/assets/css/fonts.css'],
 
   piniaPluginPersistedstate: {
     storage: 'localStorage'

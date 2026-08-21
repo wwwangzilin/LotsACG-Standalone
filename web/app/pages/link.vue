@@ -213,22 +213,22 @@ useHead({
 }
 
 .link-card {
-  background: var(--color-surface);
-  border-radius: 16px;
+  background: var(--color-surface-container);
+  border-radius: var(--card-radius, 14px);
   padding: 24px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid rgba(192, 238, 240, 0.3);
+  border: 1px solid var(--glass-border);
   color: var(--color-text);
 }
 
 .link-card:hover {
   transform: translateY(-4px);
-  background: var(--color-surface-variant);
-  border-color: rgba(192, 238, 240, 0.6);
+  background: var(--gradient-soft);
+  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
 }
 
 .link-content {
@@ -242,7 +242,7 @@ useHead({
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: rgba(192, 238, 240, 0.2);
+  background: var(--gradient-soft);
   display: flex;
   align-items: center;
   justify-content: center;

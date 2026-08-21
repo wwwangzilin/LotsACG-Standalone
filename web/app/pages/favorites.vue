@@ -113,14 +113,16 @@ const clearAll = () => {
 
 .favorite-card {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--card-radius, 14px);
   overflow: hidden;
-  background: rgba(192, 238, 240, 0.08);
-  transition: transform 0.2s ease;
+  background: var(--color-surface-container);
+  box-shadow: var(--card-shadow, none);
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
 }
 
 .favorite-card:hover {
   transform: translateY(-3px);
+  box-shadow: var(--card-shadow-hover, none);
 }
 
 .card-link {
