@@ -54,6 +54,7 @@ func (m HandlerManager) Register(hg *telegohandler.HandlerGroup) {
 	mg.HandleMessage(FollowArtist, telegohandler.CommandEqual("follow"))
 	mg.HandleMessage(UnfollowArtist, telegohandler.CommandEqual("unfollow"))
 	mg.HandleMessage(FollowList, telegohandler.CommandEqual("followlist"))
+	mg.HandleMessage(FollowGroup, telegohandler.CommandEqual("followgroup"))
 	mg.HandleMessage(SubscribeTag, telegohandler.CommandEqual("sub"))
 	mg.HandleMessage(UnsubscribeTag, telegohandler.CommandEqual("unsub"))
 	mg.HandleMessage(TagSubList, telegohandler.CommandEqual("sublist"))

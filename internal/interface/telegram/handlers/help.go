@@ -30,9 +30,10 @@ func Help(ctx *telegohandler.Context, message telego.Message) error {
 /groupsearch - 在群组中搜索作品
 /downloadzip - 打包下载回复图片及之后的多张图片 (zip)
 /tagging - 识别回复图片中的标签
-/follow - 关注画师, 画师新作品自动推送
-/unfollow - 取消关注画师
-/followlist - 查看关注的画师
+/follow - 关注画师, 画师新作品自动推送 (支持 -g=组名 归组)
+/unfollow - 取消关注画师 (支持多个链接或 -g=组名 批量)
+/followlist - 查看关注的画师 (支持 -p=页 -platform=平台 -g=组名)
+/followgroup - 关注分组管理 (list/add/del)
 /sub - 订阅标签, 有新作品时自动推送
 /unsub - 取消订阅标签
 /sublist - 查看订阅的标签

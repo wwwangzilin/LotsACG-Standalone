@@ -2,6 +2,8 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/wwwangzilin/LotsACG-Standalone/internal/service"
@@ -12,7 +14,12 @@ import (
 type ArtworkNotifier interface {
 	// SendArtworkNotification 向用户发送新作品 (图片+说明)。
 	SendArtworkNotification(ctx context.Context, userID int64, sourceURL string) error
+	// SendTextToUser 向用户发送一条文本消息 (用于管理端提醒)。
+	SendTextToUser(ctx context.Context, userID int64, text string) error
 }
+
+// inactiveArtistDays 画师超过该天数无新作品时向管理员发出提醒。
+const inactiveArtistDays = 30
 
 // StartFollowWatcher 定时检查画师关注与标签订阅, 发现新作品后推送给订阅用户。
 func StartFollowWatcher(ctx context.Context, serv *service.Service, notifier ArtworkNotifier, interval time.Duration) {
@@ -26,6 +33,7 @@ func StartFollowWatcher(ctx context.Context, serv *service.Service, notifier Art
 		defer cancel()
 		checkArtistFollows(taskCtx, serv, notifier)
 		checkTagSubscriptions(taskCtx, serv, notifier)
+		checkInactiveArtists(taskCtx, serv, notifier)
 	}
 	doTask()
 	for {
@@ -57,6 +65,7 @@ func checkArtistFollows(ctx context.Context, serv *service.Service, notifier Art
 			continue
 		}
 		data.SeenURLs = unionStrings(data.SeenURLs, urls)
+		data.LastActive = time.Now().Unix()
 		if err := serv.SaveArtistFollowData(ctx, data); err != nil {
 			log.Warn("watcher: failed to save artist follow data", "url", data.URL, "err", err)
 		}
@@ -109,6 +118,65 @@ func checkTagSubscriptions(ctx context.Context, serv *service.Service, notifier 
 		}
 		log.Info("watcher: tag new artworks notified", "tag", data.Tag, "new", len(newURLs), "users", len(data.Users))
 	}
+}
+
+// checkInactiveArtists 检查长期无新作品的关注画师 (默认 30 天), 向管理员发送提醒。
+// 避免刷屏: 同一画师 30 天内最多提醒一次 (记录在 data.LastAlert)。
+func checkInactiveArtists(ctx context.Context, serv *service.Service, notifier ArtworkNotifier) {
+	artists, err := serv.AllFollowedArtists(ctx)
+	if err != nil {
+		log.Error("watcher: failed to list followed artists for inactive check", "err", err)
+		return
+	}
+	now := time.Now()
+	inactive := make([]*service.ArtistFollowData, 0)
+	for i := range artists {
+		data := &artists[i]
+		if data.FirstFollow <= 0 {
+			continue // 无首次关注时间 (历史数据), 不参与判断
+		}
+		last := data.LastActive
+		if last <= 0 {
+			last = data.FirstFollow
+		}
+		if now.Unix()-last < inactiveArtistDays*24*3600 {
+			continue // 最近还有活动
+		}
+		if data.LastAlert > 0 && now.Unix()-data.LastAlert < inactiveArtistDays*24*3600 {
+			continue // 30 天内已提醒过
+		}
+		inactive = append(inactive, data)
+	}
+	if len(inactive) == 0 {
+		return
+	}
+	admins, err := serv.GetAdminUserIDs(ctx)
+	if err != nil || len(admins) == 0 {
+		log.Warn("watcher: no admin to notify inactive artists", "err", err)
+		return
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "⚠️ 关注画师长期无更新 (超过 %d 天):\n", inactiveArtistDays)
+	for _, d := range inactive {
+		days := (now.Unix() - d.LastActive) / 86400
+		if d.LastActive <= 0 {
+			days = (now.Unix() - d.FirstFollow) / 86400
+		}
+		fmt.Fprintf(&b, "\n• %s (约 %d 天无更新)", d.URL, days)
+	}
+	text := b.String()
+	for _, adminID := range admins {
+		if err := notifier.SendTextToUser(ctx, adminID, text); err != nil {
+			log.Warn("watcher: failed to notify admin inactive artists", "admin", adminID, "err", err)
+		}
+	}
+	for _, d := range inactive {
+		d.LastAlert = now.Unix()
+		if err := serv.SaveArtistFollowData(ctx, d); err != nil {
+			log.Warn("watcher: failed to save last_alert", "url", d.URL, "err", err)
+		}
+	}
+	log.Info("watcher: inactive artists notified", "count", len(inactive))
 }
 
 // diffStrings 返回 base 中不存在于 list 的元素 (保持 list 顺序)。

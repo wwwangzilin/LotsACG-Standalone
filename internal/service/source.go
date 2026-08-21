@@ -111,6 +111,43 @@ func (s *Service) FindArtistPageURL(text string) string {
 	return ""
 }
 
+// FindArtistPageURLs 返回文本中匹配到的全部画师主页链接 (去重, 按出现顺序)。
+func (s *Service) FindArtistPageURLs(text string) []string {
+	if text == "" {
+		return nil
+	}
+	text = strings.ReplaceAll(text, "\n", " ")
+	text = strings.ReplaceAll(text, "\r", " ")
+	var urls []string
+	seen := make(map[string]struct{})
+	for _, raw := range urlRegex.FindAllString(text, -1) {
+		candidate := strings.TrimSpace(strings.TrimRight(raw, " \t.,;:!?)]}"))
+		if candidate == "" {
+			continue
+		}
+		if _, ok := seen[candidate]; ok {
+			continue
+		}
+		if url, ok := s.matchArtistPageURL(candidate); ok {
+			seen[candidate] = struct{}{}
+			urls = append(urls, url)
+		}
+	}
+	return urls
+}
+
+// matchArtistPageURL 判断单个文本是否命中某个源支持的画师主页链接。
+func (s *Service) matchArtistPageURL(text string) (string, bool) {
+	for _, sou := range s.sources {
+		if lister, ok := sou.(source.ArtistArtworkLister); ok {
+			if url, ok := lister.MatchArtistPageURL(text); ok {
+				return url, true
+			}
+		}
+	}
+	return "", false
+}
+
 // FetchArtistArtworks 返回指定画师主页下的全部作品完整链接 (limit<=0 表示全部)。
 func (s *Service) FetchArtistArtworks(ctx context.Context, artistPageURL string, limit int) ([]string, error) {
 	for _, sou := range s.sources {

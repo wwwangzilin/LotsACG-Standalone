@@ -69,15 +69,19 @@ var (
 		},
 		{
 			Command:     "follow",
-			Description: "关注画师, 新作品自动推送",
+			Description: "关注画师, 新作品自动推送 (支持 -g=组名 归组)",
 		},
 		{
 			Command:     "unfollow",
-			Description: "取消关注画师",
+			Description: "取消关注画师 (支持多个链接或 -g=组名 批量)",
 		},
 		{
 			Command:     "followlist",
-			Description: "查看关注的画师",
+			Description: "查看关注的画师 (支持 -p=页 -platform=平台 -g=组名)",
+		},
+		{
+			Command:     "followgroup",
+			Description: "关注分组管理 (list/add/del)",
 		},
 		{
 			Command:     "sub",
